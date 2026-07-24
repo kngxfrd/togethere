@@ -1,24 +1,20 @@
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Chat } from "@/components/ChatScreen";
 
-type Chat = {
-  id: string;
-  name: string;
-  lastMessage: string;
-  time: string;
-};
-
-const MOCK_CHATS: Chat[] = [
+export const MOCK_CHATS: Chat[] = [
   {
     id: "1",
     name: "Driver — Kwame",
     lastMessage: "I'm 2 mins away",
     time: "9:41 AM",
+    online: true,
   },
 ];
 
-export default function chats() {
+export default function ChatsList() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <Text className="text-2xl font-bold text-gray-900 px-6 pt-6 mb-6">
@@ -29,7 +25,10 @@ export default function chats() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24 }}
         renderItem={({ item }) => (
-          <TouchableOpacity className="flex-row items-center py-4 border-b border-gray-100">
+          <TouchableOpacity
+            className="flex-row items-center py-4 border-b border-gray-100"
+            onPress={() => router.push({ pathname: "/(tabs)/chats/[id]", params: { id: item.id } })}
+          >
             <View className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center mr-4">
               <Ionicons name="person" size={20} color="#374151" />
             </View>

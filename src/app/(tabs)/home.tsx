@@ -75,10 +75,10 @@ export default function home() {
 
       <View
         style={{ top: insets.top + 12 }}
-        className="absolute left-5 right-5 mt-2 right-20"
+        className="absolute left-5 mt-2 right-20"
       >
         <View
-          className="flex-row items-center bg-gray-100 rounded-2xl px-5 py-3"
+          className="flex-row items-center rounded-3xl px-5 py-3"
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
