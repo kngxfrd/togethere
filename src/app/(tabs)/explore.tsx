@@ -139,7 +139,7 @@ export default function Explore() {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 24, gap: 8 }}
-          className="mb-6 flex-grow-0"
+          className="mb-6 flex-grow-0 pt-5"
         >
           {CATEGORIES.map((label) => {
             const isActive = label === activeCategory;

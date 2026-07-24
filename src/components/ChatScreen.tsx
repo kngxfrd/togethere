@@ -1,5 +1,5 @@
 import { ArrowLeft, Send } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useChrome } from "@/app/(tabs)/_layout";
 
 export type Chat = {
   id: string;
@@ -40,6 +41,14 @@ export default function ChatScreen({
 }: ChatScreenProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState("");
+  const { setHideChrome } = useChrome();
+
+  // Hide the tab bar + hamburger button while this chat is open,
+  // restore them when leaving.
+  useEffect(() => {
+    setHideChrome(true);
+    return () => setHideChrome(false);
+  }, []);
 
   const sendMessage = () => {
     if (!draft.trim()) return;
@@ -59,7 +68,7 @@ export default function ChatScreen({
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
-      <View className="flex-row items-center px-4 pt-6 pb-3 border-b border-gray-100">
+      <View className="flex-row items-center px-4 pt-5 pb-3 border-b border-gray-100">
         <TouchableOpacity onPress={onBack} className="mr-3 p-1">
           <ArrowLeft size={22} color="#111827" />
         </TouchableOpacity>
@@ -120,7 +129,7 @@ export default function ChatScreen({
         />
 
         {/* Input bar */}
-        <View className="flex-row items-center px-4 py-6 border-t border-gray-100">
+        <View className="flex-row items-center px-4 pt-6 border-t border-gray-100">
           <TextInput
             value={draft}
             onChangeText={setDraft}

@@ -198,7 +198,7 @@ export default function TabsLayout() {
               shadowRadius: 8,
               elevation: 5,
             }}
-            className="absolute right-5 w-12 h-12 mt-2 rounded-full bg-gray-100 items-center justify-center"
+            className="absolute right-5 w-12 h-12 mt-1 rounded-full bg-gray-50 items-center justify-center"
             activeOpacity={0.7}
           >
             <Menu size={24} color="#111827" />
