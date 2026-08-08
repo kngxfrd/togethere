@@ -282,7 +282,6 @@ export default function Explore() {
                   onChangeText={setMessage}
                   style={{ outlineStyle: "none" } as any}
                   placeholder="Type a message..."
-                  multiline
                   className="bg-gray-100 rounded-2xl p-4 h-20 mb-6 text-base text-gray-900"
                   textAlignVertical="top"
                 />

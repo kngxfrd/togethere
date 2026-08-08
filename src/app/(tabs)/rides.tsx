@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Plus, X } from "lucide-react-native";
+import * as Location from "expo-location";
 import {
   Animated,
   Dimensions,
@@ -14,68 +15,20 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUserRole } from "@/hooks/useUserRole";
-
-type CommuterRide = {
-  id: string;
-  destination: string;
-  date: string;
-  fare: string;
-};
-
-type PostedRide = {
-  id: string;
-  destination: string;
-  date: string;
-  fare: string;
-  seatsFilled: number;
-  seatsTotal: number;
-};
-
-const MOCK_RIDES: CommuterRide[] = [
-  {
-    id: "1",
-    destination: "Asafo VIP Station",
-    date: "Jul 20, 2026",
-    fare: "GHS 25.00",
-  },
-  {
-    id: "2",
-    destination: "Chancellor's Hall Area",
-    date: "Jul 18, 2026",
-    fare: "GHS 15.00",
-  },
-];
-
-const INITIAL_POSTED_RIDES: PostedRide[] = [
-  {
-    id: "1",
-    destination: "Asafo VIP Station",
-    date: "Jul 22, 2026",
-    fare: "GHS 25.00",
-    seatsFilled: 3,
-    seatsTotal: 4,
-  },
-  {
-    id: "2",
-    destination: "KNUST Campus",
-    date: "Jul 21, 2026",
-    fare: "GHS 18.00",
-    seatsFilled: 1,
-    seatsTotal: 4,
-  },
-];
+import { useRides } from "@/contexts/RideContext";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.75;
+
+// Placeholder identity until real auth/profile data is wired in.
+const CURRENT_DRIVER_NAME = "Kwame";
 
 export default function Rides() {
   const role = useUserRole();
   const isDriver = role === "driver";
   const insets = useSafeAreaInsets();
 
-  const [postedRides, setPostedRides] = useState<PostedRide[]>(
-    INITIAL_POSTED_RIDES
-  );
+  const { postedRides, requests, postRide } = useRides();
 
   // Post-a-ride sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -86,7 +39,7 @@ export default function Rides() {
 
   const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
 
-  const openSheet = () => {
+  const openSheet = async () => {
     setSheetOpen(true);
     translateY.setValue(SHEET_HEIGHT);
     Animated.spring(translateY, {
@@ -139,19 +92,37 @@ export default function Rides() {
     fare.trim().length > 0 &&
     seats.trim().length > 0;
 
-  const handlePostRide = () => {
+  const handlePostRide = async () => {
     if (!canSubmit) return;
 
-    const newRide: PostedRide = {
-      id: Date.now().toString(),
+    // Capture the driver's current location at the moment they post,
+    // so this ride actually shows up as a marker on the commuter's map.
+    let driverLocation: { latitude: number; longitude: number } | null = null;
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        driverLocation = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+      }
+    } catch {
+      // If location can't be read, the ride still posts — it just won't
+      // appear as a map marker until driverLocation is available.
+    }
+
+    postRide({
+      driverName: CURRENT_DRIVER_NAME,
       destination: destination.trim(),
       date: date.trim(),
       fare: fare.trim(),
-      seatsFilled: 0,
       seatsTotal: Number(seats.trim()) || 0,
-    };
+      driverLocation,
+    });
 
-    setPostedRides((prev) => [newRide, ...prev]);
     closeSheet();
   };
 
@@ -159,28 +130,75 @@ export default function Rides() {
     <View className="flex-1">
       <SafeAreaView className="flex-1 bg-white">
         <Text className="text-2xl font-bold text-gray-900 px-6 pt-6 mb-6">
-          {isDriver ? "Your posted rides" : "Your rides"}
+          {isDriver ? "Your posted rides" : "Available rides"}
         </Text>
 
         {isDriver ? (
           <FlatList
-            data={postedRides}
+            data={postedRides.filter((r) => r.driverName === CURRENT_DRIVER_NAME)}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }}
-            renderItem={({ item }) => (
-              <View className="py-4 border-b border-gray-100">
-                <Text className="text-base font-medium text-gray-900">
-                  {item.destination}
-                </Text>
-                <View className="flex-row justify-between mt-1.5">
-                  <Text className="text-sm text-gray-500">{item.date}</Text>
-                  <Text className="text-sm text-gray-700">{item.fare}</Text>
+            renderItem={({ item }) => {
+              const rideRequests = requests.filter((r) => r.rideId === item.id);
+              return (
+                <View className="py-4 border-b border-gray-100">
+                  <Text className="text-base font-medium text-gray-900">
+                    {item.destination}
+                  </Text>
+                  <View className="flex-row justify-between mt-1.5">
+                    <Text className="text-sm text-gray-500">{item.date}</Text>
+                    <Text className="text-sm text-gray-700">{item.fare}</Text>
+                  </View>
+                  <Text className="text-sm text-gray-500 mt-1 mb-2">
+                    {item.seatsFilled}/{item.seatsTotal} seats filled
+                  </Text>
+
+                  {rideRequests.length > 0 ? (
+                    <View className="mt-1 gap-1">
+                      {rideRequests.map((req) => (
+                        <View
+                          key={req.id}
+                          className="flex-row items-center justify-between py-1"
+                        >
+                          <Text className="text-sm text-gray-700">
+                            {req.commuterName}
+                          </Text>
+                          <View
+                            className={`rounded-full px-3 py-1 ${
+                              req.status === "accepted"
+                                ? "bg-green-100"
+                                : req.status === "declined"
+                                ? "bg-red-100"
+                                : "bg-yellow-100"
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs font-medium ${
+                                req.status === "accepted"
+                                  ? "text-green-700"
+                                  : req.status === "declined"
+                                  ? "text-red-700"
+                                  : "text-yellow-700"
+                              }`}
+                            >
+                              {req.status === "accepted"
+                                ? "Accepted"
+                                : req.status === "declined"
+                                ? "Declined"
+                                : "Pending"}
+                            </Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text className="text-xs text-gray-400 mt-1">
+                      No bookings yet
+                    </Text>
+                  )}
                 </View>
-                <Text className="text-sm text-gray-500 mt-1">
-                  {item.seatsFilled}/{item.seatsTotal} seats filled
-                </Text>
-              </View>
-            )}
+              );
+            }}
             ListEmptyComponent={
               <Text className="text-gray-500 mt-8 text-center">
                 You haven't posted any rides yet.
@@ -189,20 +207,25 @@ export default function Rides() {
           />
         ) : (
           <FlatList
-            data={MOCK_RIDES}
+            data={postedRides}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24 }}
-            renderItem={({ item }) => (
-              <View className="py-4 border-b border-gray-100">
-                <Text className="text-base font-medium text-gray-900">
-                  {item.destination}
-                </Text>
-                <View className="flex-row justify-between mt-1.5">
-                  <Text className="text-sm text-gray-500">{item.date}</Text>
-                  <Text className="text-sm text-gray-700">{item.fare}</Text>
+            renderItem={({ item }) => {
+              return (
+                <View className="py-4 border-b border-gray-100">
+                  <Text className="text-base font-medium text-gray-900">
+                    {item.destination}
+                  </Text>
+                  <View className="flex-row justify-between mt-1.5">
+                    <Text className="text-sm text-gray-500">{item.date}</Text>
+                    <Text className="text-sm text-gray-700">{item.fare}</Text>
+                  </View>
+                  <Text className="text-sm text-gray-500 mt-1">
+                    Driver — {item.driverName} · {item.seatsFilled}/{item.seatsTotal} seats filled
+                  </Text>
                 </View>
-              </View>
-            )}
+              );
+            }}
             ListEmptyComponent={
               <Text className="text-gray-500 mt-8 text-center">No rides yet.</Text>
             }
@@ -230,8 +253,6 @@ export default function Rides() {
         )}
       </SafeAreaView>
 
-      {/* Post-a-ride sheet — same opaque-overlay pattern as the ride-details
-          sheet on Explore, no Modal component involved. */}
       {sheetOpen && (
         <>
           <TouchableWithoutFeedback onPress={closeSheet}>
@@ -263,7 +284,6 @@ export default function Rides() {
             }}
             className="rounded-t-3xl"
           >
-            {/* Drag handle + close button */}
             <View
               {...panResponder.panHandlers}
               className="flex-row items-center justify-between px-6 pt-3 pb-2"
