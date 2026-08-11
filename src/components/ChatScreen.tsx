@@ -32,19 +32,29 @@ type ChatScreenProps = {
   chat: Chat;
   initialMessages?: Message[];
   onBack: () => void;
+  // Optional: called with the raw text right after it's added to the
+  // local message list, so the screen embedding ChatScreen can persist
+  // it (e.g. POST to the backend). If omitted, ChatScreen behaves
+  // exactly as before — local-only.
+  onSend?: (text: string) => void;
 };
 
 export default function ChatScreen({
   chat,
   initialMessages = [],
   onBack,
+  onSend,
 }: ChatScreenProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const { setHideChrome } = useChrome();
 
-  // Hide the tab bar + hamburger button while this chat is open,
-  // restore them when leaving.
+  // Keep the local list in sync if the parent screen refetches messages
+  // (e.g. polling) and passes a new initialMessages array down.
+  useEffect(() => {
+    setMessages(initialMessages);
+  }, [initialMessages]);
+
   useEffect(() => {
     setHideChrome(true);
     return () => setHideChrome(false);
@@ -52,9 +62,10 @@ export default function ChatScreen({
 
   const sendMessage = () => {
     if (!draft.trim()) return;
+    const text = draft.trim();
     const newMessage: Message = {
       id: Date.now().toString(),
-      text: draft.trim(),
+      text,
       fromMe: true,
       time: new Date().toLocaleTimeString([], {
         hour: "numeric",
@@ -63,11 +74,11 @@ export default function ChatScreen({
     };
     setMessages((prev) => [...prev, newMessage]);
     setDraft("");
+    onSend?.(text);
   };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      {/* Header */}
       <View className="flex-row items-center px-4 pt-5 pb-3 border-b border-gray-100">
         <TouchableOpacity onPress={onBack} className="mr-3 p-1">
           <ArrowLeft size={22} color="#111827" />
@@ -94,7 +105,6 @@ export default function ChatScreen({
         </View>
       </View>
 
-      {/* Messages */}
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -128,7 +138,6 @@ export default function ChatScreen({
           )}
         />
 
-        {/* Input bar */}
         <View className="flex-row items-center px-4 pt-6 border-t border-gray-100">
           <TextInput
             value={draft}

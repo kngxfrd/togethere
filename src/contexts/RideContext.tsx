@@ -1,11 +1,13 @@
-import { createContext, useContext, useMemo, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
+import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 export type RideStatus = "pending" | "accepted" | "declined";
-
 export type Coordinate = { latitude: number; longitude: number };
 
 export type PostedRide = {
   id: string;
+  driverId: string;       // add this
   driverName: string;
   destination: string;
   date: string;
@@ -18,6 +20,7 @@ export type PostedRide = {
 export type RideRequest = {
   id: string;
   rideId: string;
+  commuterId: string;     // add this
   commuterName: string;
   driverName: string;
   destination: string;
@@ -27,31 +30,7 @@ export type RideRequest = {
   requestedAt: string;
 };
 
-const INITIAL_POSTED_RIDES: PostedRide[] = [
-  {
-    id: "1",
-    driverName: "Kwame",
-    destination: "Asafo VIP Station",
-    date: "Jul 22, 2026",
-    fare: "GHS 25.00",
-    seatsFilled: 3,
-    seatsTotal: 4,
-    driverLocation: { latitude: 6.6885, longitude: -1.6244 },
-  },
-  {
-    id: "2",
-    driverName: "Kwame",
-    destination: "KNUST Campus",
-    date: "Jul 21, 2026",
-    fare: "GHS 18.00",
-    seatsFilled: 1,
-    seatsTotal: 4,
-    driverLocation: { latitude: 6.6745, longitude: -1.5716 },
-  },
-];
-
 type PostRideInput = {
-  driverName: string;
   destination: string;
   date: string;
   fare: string;
@@ -62,74 +41,80 @@ type PostRideInput = {
 type RideContextType = {
   postedRides: PostedRide[];
   requests: RideRequest[];
-  postRide: (ride: PostRideInput) => void;
-  requestRide: (ride: PostedRide, commuterName: string) => void;
-  acceptRequest: (requestId: string) => void;
-  declineRequest: (requestId: string) => void;
+  loading: boolean;
+  postRide: (ride: PostRideInput) => Promise<void>;
+  requestRide: (ride: PostedRide) => Promise<void>;
+  acceptRequest: (requestId: string) => Promise<void>;
+  declineRequest: (requestId: string) => Promise<void>;
+  refresh: () => Promise<void>;
 };
 
 const RideContext = createContext<RideContextType | null>(null);
 
+// Backend ids are numbers; the app's existing types use strings
+// everywhere (keyExtractors, template literals like `req-${id}`), so
+// normalize at the boundary rather than touching every screen.
+const toRide = (r: any): PostedRide => ({ ...r, id: String(r.id), driverId: String(r.driverId) });
+const toRequest = (r: any): RideRequest => ({
+  ...r,
+  id: String(r.id),
+  rideId: String(r.rideId),
+  commuterId: String(r.commuterId),
+});
+
 export function RideProvider({ children }: { children: ReactNode }) {
-  const [postedRides, setPostedRides] = useState<PostedRide[]>(INITIAL_POSTED_RIDES);
+  const { isLoggedIn } = useAuth();
+  const [postedRides, setPostedRides] = useState<PostedRide[]>([]);
   const [requests, setRequests] = useState<RideRequest[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const postRide = (ride: PostRideInput) => {
-    setPostedRides((prev) => [
-      { id: Date.now().toString(), seatsFilled: 0, ...ride },
-      ...prev,
-    ]);
+  const refresh = async () => {
+    if (!isLoggedIn) return;
+    setLoading(true);
+    try {
+      const [rides, myRequests] = await Promise.all([
+        api.get("/rides/"),
+        api.get("/requests/"),
+      ]);
+      setPostedRides(rides.map(toRide));
+      setRequests(myRequests.map(toRequest));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const requestRide = (ride: PostedRide, commuterName: string) => {
-    setRequests((prev) => [
-      {
-        id: `req-${Date.now()}`,
-        rideId: ride.id,
-        commuterName,
-        driverName: ride.driverName,
-        destination: ride.destination,
-        date: ride.date,
-        fare: ride.fare,
-        status: "pending",
-        requestedAt: new Date().toLocaleTimeString([], {
-          hour: "numeric",
-          minute: "2-digit",
-        }),
-      },
-      ...prev,
-    ]);
+  useEffect(() => {
+    refresh();
+  }, [isLoggedIn]);
+
+  const postRide = async (ride: PostRideInput) => {
+    const created = await api.post("/rides/", ride);
+    setPostedRides((prev) => [toRide(created), ...prev]);
   };
 
-  const acceptRequest = (requestId: string) => {
-    setRequests((prev) => {
-      const target = prev.find((r) => r.id === requestId);
-      if (target) {
-        setPostedRides((rides) =>
-          rides.map((r) =>
-            r.id === target.rideId
-              ? { ...r, seatsFilled: Math.min(r.seatsFilled + 1, r.seatsTotal) }
-              : r
-          )
-        );
-      }
-      return prev.map((r) =>
-        r.id === requestId ? { ...r, status: "accepted" as RideStatus } : r
-      );
-    });
+  const requestRide = async (ride: PostedRide) => {
+    const created = await api.post(`/rides/${ride.id}/requests/`);
+    setRequests((prev) => [toRequest(created), ...prev]);
   };
 
-  const declineRequest = (requestId: string) => {
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.id === requestId ? { ...r, status: "declined" as RideStatus } : r
-      )
-    );
+  const acceptRequest = async (requestId: string) => {
+    const updated = await api.patch(`/requests/${requestId}/respond/`, { action: "accept" });
+    const updatedReq = toRequest(updated);
+    setRequests((prev) => prev.map((r) => (r.id === requestId ? updatedReq : r)));
+    // Seat count changed server-side — refetch rides so seatsFilled stays accurate.
+    const rides = await api.get("/rides/");
+    setPostedRides(rides.map(toRide));
+  };
+
+  const declineRequest = async (requestId: string) => {
+    const updated = await api.patch(`/requests/${requestId}/respond/`, { action: "decline" });
+    const updatedReq = toRequest(updated);
+    setRequests((prev) => prev.map((r) => (r.id === requestId ? updatedReq : r)));
   };
 
   const value = useMemo(
-    () => ({ postedRides, requests, postRide, requestRide, acceptRequest, declineRequest }),
-    [postedRides, requests]
+    () => ({ postedRides, requests, loading, postRide, requestRide, acceptRequest, declineRequest, refresh }),
+    [postedRides, requests, loading]
   );
 
   return <RideContext.Provider value={value}>{children}</RideContext.Provider>;

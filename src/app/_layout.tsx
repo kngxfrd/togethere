@@ -5,6 +5,7 @@ import { RideProvider } from '@/contexts/RideContext';
 
 export default function RootLayout() {
   return (
+    <AuthProvider>
     <RideProvider>
     <AuthProvider>
       <Stack screenOptions={{ headerShown: false }}>
@@ -13,5 +14,6 @@ export default function RootLayout() {
       </Stack>
     </AuthProvider>
     </RideProvider>
+    </AuthProvider>
   );
 }

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { api, setTokens, clearTokens, setUnauthorizedHandler } from '@/lib/api';
 
 type Role = "commuter" | "driver";
 
@@ -29,36 +30,24 @@ type AuthContextType = {
 };
 
 const SESSION_KEY = 'auth:user';
-// TODO: replace with your real backend. This in-memory map is just here
-// so signIn can look up the role a user picked at signUp time — without
-// it, every login would come back with role undefined and fall back to
-// "commuter" in useUserRole().
-const MOCK_USER_STORE: Record<string, User> = {};
+
+// Backend returns { id, full_name, email, phone, role } — reshape to the
+// User type the rest of the app already expects.
+function toUser(apiUser: any): User {
+  return {
+    id: String(apiUser.id),
+    email: apiUser.email,
+    name: apiUser.full_name,
+    phone: apiUser.phone,
+    role: apiUser.role,
+  };
+}
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Restore the session on app launch so role-based tab routing is
-  // correct immediately, without waiting on a network round trip.
-  useEffect(() => {
-    (async () => {
-      try {
-        const stored = await AsyncStorage.getItem(SESSION_KEY);
-        if (stored) {
-          const parsed: User = JSON.parse(stored);
-          setUser(parsed);
-          MOCK_USER_STORE[parsed.email] = parsed;
-        }
-      } catch {
-        // ignore — treat as logged out
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-  }, []);
 
   const persist = async (nextUser: User | null) => {
     if (nextUser) {
@@ -68,30 +57,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // TODO: replace with your real login API call, which should return
-  // the user's role from your backend rather than this local lookup.
+  const signOut = async () => {
+    setUser(null);
+    await persist(null);
+    await clearTokens();
+  };
+
+  // If a stored access token turns out to be expired/invalid and the
+  // refresh fails, api.ts calls this to drop the session.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setUser(null);
+      persist(null);
+    });
+  }, []);
+
+  // Restore session on launch. Trust the cached user immediately (so
+  // role-based routing doesn't flash), then re-validate against /me/.
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(SESSION_KEY);
+        if (stored) {
+          setUser(JSON.parse(stored));
+          try {
+            const fresh = await api.get('/auth/me/');
+            const nextUser = toUser(fresh);
+            setUser(nextUser);
+            await persist(nextUser);
+          } catch {
+            // access/refresh both invalid — unauthorizedHandler already
+            // cleared the session above via api.ts
+          }
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, []);
+
   const signIn = async (email: string, password: string) => {
-    const existing = MOCK_USER_STORE[email];
-    const nextUser: User = existing ?? {
-      id: '1',
-      email,
-      name: email.split('@')[0],
-    };
+    const res = await api.post('/auth/login/', { email, password });
+    await setTokens(res.access, res.refresh);
+    const nextUser = toUser(res.user);
     setUser(nextUser);
-    MOCK_USER_STORE[email] = nextUser;
     await persist(nextUser);
   };
 
   const signUp = async ({ fullName, email, phone, password, role }: SignUpPayload) => {
-    const nextUser: User = { id: '1', email, name: fullName, phone, role };
+    const res = await api.post('/auth/signup/', {
+      full_name: fullName,
+      email,
+      phone,
+      password,
+      role,
+    });
+    await setTokens(res.access, res.refresh);
+    const nextUser = toUser(res.user);
     setUser(nextUser);
-    MOCK_USER_STORE[email] = nextUser;
     await persist(nextUser);
-  };
-
-  const signOut = async () => {
-    setUser(null);
-    await persist(null);
   };
 
   return React.createElement(

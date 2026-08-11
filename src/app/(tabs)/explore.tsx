@@ -1,82 +1,50 @@
-import RideListItem from "@/components/ridelist";
-import { useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Animated,
   Dimensions,
+  Image,
   PanResponder,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-const CATEGORIES = ["All","Short Distance", "Long Distance", "Sedan", "SUV"];
+import { useFocusEffect } from "expo-router";
+import { useRides, PostedRide } from "@/contexts/RideContext";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
-const SHEET_HEIGHT = SCREEN_HEIGHT * 0.7;
+const SHEET_HEIGHT = SCREEN_HEIGHT * 0.6;
 
-type Ride = {
-  id: string;
-  category: string;
-  destination: string;
-  driverName: string;
-  vehicleInfo: string;
-  passengerCount: number;
-  driverPhoto?: string;
-};
+type SortOption = "newest" | "priceLowHigh" | "seatsAvailable";
 
-const RIDES: Ride[] = [
-  {
-    id: "1",
-    category: "Short Distance",
-    destination: "Asafo VIP Station",
-    driverName: "Kwame Mensah",
-    vehicleInfo: "Toyota Corolla",
-    passengerCount: 4,
-    driverPhoto: "https://example.com/avatar1.jpg",
-  },
-  {
-    id: "2",
-    category: "Short Distance",
-    destination: "Kejetia Market",
-    driverName: "Ama Owusu",
-    vehicleInfo: "Hyundai Elantra",
-    passengerCount: 3,
-    driverPhoto: "https://example.com/avatar2.jpg",
-  },
-  {
-    id: "3",
-    category: "Long Distance",
-    destination: "Adum, Kumasi",
-    driverName: "Yaw Boateng",
-    vehicleInfo: "Honda Wave",
-    passengerCount: 1,
-    driverPhoto: "https://example.com/avatar3.jpg",
-  },
-  {
-    id: "4",
-    category: "Sedan",
-    destination: "KNUST Campus",
-    driverName: "Efua Darko",
-    vehicleInfo: "Kia Rio",
-    passengerCount: 2,
-    driverPhoto: "https://example.com/avatar4.jpg",
-  },
+const SORT_OPTIONS: { key: SortOption; label: string }[] = [
+  { key: "newest", label: "Newest" },
+  { key: "priceLowHigh", label: "Price: Low to High" },
+  { key: "seatsAvailable", label: "Seats Available" },
 ];
 
+// Fare strings look like "$12.50" — strip anything that isn't a digit or
+// decimal point so they sort numerically rather than lexicographically.
+const parseFare = (fare: string) => parseFloat(fare.replace(/[^0-9.]/g, "")) || 0;
+
 export default function Explore() {
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [selectedRide, setSelectedRide] = useState<Ride | null>(null);
-  const [message, setMessage] = useState("");
+  const { postedRides, requests, requestRide, refresh } = useRides();
+  const [selectedRide, setSelectedRide] = useState<PostedRide | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [requesting, setRequesting] = useState(false);
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
 
-  const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
-  const openRide = (ride: Ride) => {
+  const translateY = useState(new Animated.Value(SHEET_HEIGHT))[0];
+
+  const openRide = (ride: PostedRide) => {
     setSelectedRide(ride);
     setSheetOpen(true);
     translateY.setValue(SHEET_HEIGHT);
@@ -95,37 +63,61 @@ export default function Explore() {
     }).start(() => {
       setSheetOpen(false);
       setSelectedRide(null);
-      setMessage("");
     });
   };
 
-  const panResponder = useRef(
+  const panResponder = useState(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) =>
-        Math.abs(gestureState.dy) > 5,
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          translateY.setValue(gestureState.dy);
-        }
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 5,
+      onPanResponderMove: (_, g) => {
+        if (g.dy > 0) translateY.setValue(g.dy);
       },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > SHEET_HEIGHT * 0.25) {
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > SHEET_HEIGHT * 0.25) {
           closeRide();
         } else {
-          Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true,
-            bounciness: 4,
-          }).start();
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
         }
       },
     })
-  ).current;
+  )[0];
 
- const filteredRides =
-    activeCategory === "All"
-      ? RIDES
-      : RIDES.filter((r) => r.category === activeCategory);
+  const statusFor = (ride: PostedRide) =>
+    requests.find((r) => r.rideId === ride.id)?.status;
+
+  const handleSendRequest = async () => {
+    if (!selectedRide) return;
+    setRequesting(true);
+    try {
+      await requestRide(selectedRide);
+      closeRide();
+    } catch (err: any) {
+      console.error("Failed to send request:", err.message);
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const selectedStatus = selectedRide ? statusFor(selectedRide) : undefined;
+
+  // "Newest" relies on postedRides already coming back newest-first from
+  // the API (no createdAt field on PostedRide to sort by client-side), so
+  // that option is a no-op copy; the other two sort explicitly.
+  const sortedRides = useMemo(() => {
+    const rides = [...postedRides];
+    switch (sortBy) {
+      case "priceLowHigh":
+        return rides.sort((a, b) => parseFare(a.fare) - parseFare(b.fare));
+      case "seatsAvailable":
+        return rides.sort(
+          (a, b) =>
+            (b.seatsTotal - b.seatsFilled) - (a.seatsTotal - a.seatsFilled)
+        );
+      case "newest":
+      default:
+        return rides;
+    }
+  }, [postedRides, sortBy]);
 
   return (
     <View className="flex-1">
@@ -134,82 +126,93 @@ export default function Explore() {
           Explore
         </Text>
 
-        {/* Category tabs */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 24, gap: 8 }}
-          className="mb-6 flex-grow-0 pt-5"
-        >
-          {CATEGORIES.map((label) => {
-            const isActive = label === activeCategory;
+        <View className="flex-row px-6 mb-4" style={{ gap: 8 }}>
+          {SORT_OPTIONS.map((opt) => {
+            const active = sortBy === opt.key;
             return (
               <TouchableOpacity
-                key={label}
-                onPress={() => setActiveCategory(label)}
-                activeOpacity={0.7}
-                className={`px-4 py-2 rounded-full ${
-                  isActive ? "bg-black" : "bg-gray-100"
+                key={opt.key}
+                onPress={() => setSortBy(opt.key)}
+                activeOpacity={0.75}
+                className={`px-3 py-1.5 rounded-full border ${
+                  active
+                    ? "bg-black"
+                    : "bg-gray-100 border-gray-200"
                 }`}
               >
                 <Text
-                  className={`text-sm font-medium ${
-                    isActive ? "text-white" : "text-gray-700"
+                  className={`text-xs font-semibold ${
+                    active ? "text-white" : "text-gray-700"
                   }`}
                 >
-                  {label}
+                  {opt.label}
                 </Text>
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
 
-        {/* Ride list */}
-        <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
-        >
-          {filteredRides.length === 0 && (
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}>
+          {sortedRides.length === 0 && (
             <Text className="text-gray-400 text-center mt-10">
-              No results in this category
+              No rides posted yet — check back soon.
             </Text>
           )}
 
-          {filteredRides.map((ride) => (
-            <TouchableOpacity
-              key={ride.id}
-              className="bg-gray-50 rounded-2xl px-2 py-1 mb-3"
-              activeOpacity={0.7}
-              onPress={() => openRide(ride)}
-            >
-              <RideListItem
-                destination={ride.destination}
-                driverName={ride.driverName}
-                vehicleInfo={ride.vehicleInfo}
-                passengerCount={ride.passengerCount}
+          {sortedRides.map((ride) => {
+            const status = statusFor(ride);
+            const full = ride.seatsFilled >= ride.seatsTotal;
+            return (
+              <TouchableOpacity
+                key={ride.id}
+                className="bg-gray-50 rounded-2xl px-4 py-4 mb-3 flex-row items-center"
+                activeOpacity={0.7}
                 onPress={() => openRide(ride)}
-              />
-            </TouchableOpacity>
-          ))}
+              >
+                <Image
+                  source={require("../../pics/Sedan-160-temp.png")}
+                  style={{ width: 56, height: 56, marginRight: 12 }}
+                  resizeMode="contain"
+                />
+
+                <View className="flex-1">
+                  <Text className="text-base font-semibold text-gray-900">
+                    {ride.destination}
+                  </Text>
+                  <Text className="text-sm text-gray-500 mt-0.5">
+                    {ride.driverName} · {ride.date}
+                  </Text>
+                  <View className="flex-row justify-between items-center mt-2">
+                    <Text className="text-sm text-gray-700">{ride.fare}</Text>
+                    <Text className="text-xs text-gray-400">
+                      {ride.seatsFilled}/{ride.seatsTotal} seats
+                      {full ? " · Full" : ""}
+                    </Text>
+                  </View>
+                  {status && (
+                    <Text
+                      className={`text-xs font-medium mt-2 ${
+                        status === "accepted"
+                          ? "text-green-700"
+                          : status === "declined"
+                          ? "text-red-700"
+                          : "text-yellow-700"
+                      }`}
+                    >
+                      {status === "accepted" ? "Accepted — check Chats" : status === "declined" ? "Declined" : "Request sent"}
+                    </Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </SafeAreaView>
 
-      {/* Sheet overlay — no Modal, no separate transparent layer, just an absolutely
-          positioned opaque View sitting on top of the screen */}
       {sheetOpen && (
         <>
-          {/* Tap-outside-to-close area, sits behind the sheet, above the Explore screen.
-              This has no background color at all (not even a transparent one applied
-              via a Modal) — it's just an invisible touch target. */}
           <TouchableWithoutFeedback onPress={closeRide}>
-            <View
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: SHEET_HEIGHT,
-              }}
-            />
+            <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: SHEET_HEIGHT }} />
           </TouchableWithoutFeedback>
 
           <Animated.View
@@ -229,79 +232,76 @@ export default function Explore() {
             }}
             className="rounded-t-3xl"
           >
-            {/* Drag handle */}
-            <View
-              {...panResponder.panHandlers}
-              className="items-center pt-3 pb-2"
-            >
+            <View {...panResponder.panHandlers} className="items-center pt-3 pb-2">
               <View className="w-10 h-1.5 bg-gray-300 rounded-full" />
             </View>
 
             {selectedRide && (
-              <ScrollView
-                contentContainerStyle={{ padding: 24, paddingBottom: 40 }}
-                showsVerticalScrollIndicator={false}
-              >
-                {/* Driver profile */}
-                <View className="items-center mb-6">
+              <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+                <View className="items-center mb-4">
                   <Image
-                    source={{ uri: selectedRide.driverPhoto }}
-                    className="w-24 h-24 rounded-full mb-3 bg-gray-200"
+                    source={require("../../pics/Sedan-160-temp.png")}
+                    style={{ width: 140, height: 140 }}
+                    resizeMode="contain"
                   />
-                  <Text className="text-xl font-bold text-gray-900">
-                    {selectedRide.driverName}
-                  </Text>
-                  <Text className="text-gray-500">
-                    {selectedRide.vehicleInfo}
-                  </Text>
                 </View>
 
-                {/* Ride details */}
+                <Text className="text-xl font-bold text-gray-900 mb-1">
+                  {selectedRide.driverName}
+                </Text>
+                <Text className="text-gray-500 mb-6">Driver</Text>
+
                 <View className="bg-gray-50 rounded-2xl p-4 mb-6">
-                  <Text className="text-sm text-gray-500 mb-1">
-                    Destination
-                  </Text>
+                  <Text className="text-sm text-gray-500 mb-1">Destination</Text>
                   <Text className="text-base font-semibold text-gray-900 mb-3">
                     {selectedRide.destination}
                   </Text>
-
-                  <Text className="text-sm text-gray-500 mb-1">
-                    Passengers
+                  <Text className="text-sm text-gray-500 mb-1">Date</Text>
+                  <Text className="text-base font-semibold text-gray-900 mb-3">
+                    {selectedRide.date}
                   </Text>
+                  <Text className="text-sm text-gray-500 mb-1">Fare</Text>
+                  <Text className="text-base font-semibold text-gray-900 mb-3">
+                    {selectedRide.fare}
+                  </Text>
+                  <Text className="text-sm text-gray-500 mb-1">Seats</Text>
                   <Text className="text-base font-semibold text-gray-900">
-                    {selectedRide.passengerCount}
+                    {selectedRide.seatsFilled}/{selectedRide.seatsTotal} filled
                   </Text>
                 </View>
 
-                {/* Message box */}
-                <Text className="text-sm text-gray-500 mb-2">
-                  Message the driver
-                </Text>
-                <TextInput
-                  value={message}
-                  onChangeText={setMessage}
-                  style={{ outlineStyle: "none" } as any}
-                  placeholder="Type a message..."
-                  className="bg-gray-100 rounded-2xl p-4 h-20 mb-6 text-base text-gray-900"
-                  textAlignVertical="top"
-                />
-
-                {/* Send request button */}
-                <TouchableOpacity
-                  className="bg-black rounded-2xl py-4 items-center"
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    console.log("Send request", {
-                      ride: selectedRide,
-                      message,
-                    });
-                    closeRide();
-                  }}
-                >
-                  <Text className="text-white font-semibold text-base">
-                    Send Request
-                  </Text>
-                </TouchableOpacity>
+                {selectedStatus === "accepted" ? (
+                  <View className="bg-green-100 rounded-2xl py-4 items-center">
+                    <Text className="text-green-700 font-semibold">Accepted — check Chats</Text>
+                  </View>
+                ) : selectedStatus === "pending" ? (
+                  <View className="bg-yellow-100 rounded-2xl py-4 items-center">
+                    <Text className="text-yellow-700 font-semibold">Request sent</Text>
+                  </View>
+                ) : selectedStatus === "declined" ? (
+                  <View className="bg-red-100 rounded-2xl py-4 items-center">
+                    <Text className="text-red-700 font-semibold">Declined</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    className={`rounded-2xl py-4 items-center ${
+                      selectedRide.seatsFilled >= selectedRide.seatsTotal || requesting
+                        ? "bg-gray-300"
+                        : "bg-black"
+                    }`}
+                    activeOpacity={0.8}
+                    disabled={selectedRide.seatsFilled >= selectedRide.seatsTotal || requesting}
+                    onPress={handleSendRequest}
+                  >
+                    <Text className="text-white font-semibold text-base">
+                      {requesting
+                        ? "Sending…"
+                        : selectedRide.seatsFilled >= selectedRide.seatsTotal
+                        ? "Full"
+                        : "Send Request"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </ScrollView>
             )}
           </Animated.View>

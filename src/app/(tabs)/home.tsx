@@ -346,17 +346,13 @@ export default function home() {
     postedRides.find((r) => r.id === selectedRideId) ?? undefined;
 
   const selectedRideStatus = selectedRide
-    ? requests.find(
-        (r) =>
-          r.rideId === selectedRide.id &&
-          r.commuterName === CURRENT_COMMUTER_NAME,
-      )?.status
-    : undefined;
+  ? requests.find((r) => r.rideId === selectedRide.id)?.status
+  : undefined;
 
   const handleRequestRide = () => {
-    if (!selectedRide) return;
-    requestRide(selectedRide, CURRENT_COMMUTER_NAME);
-  };
+  if (!selectedRide) return;
+  requestRide(selectedRide);
+};
 
   const handleSearchBoxLayout = (e: LayoutChangeEvent) => {
     const { height } = e.nativeEvent.layout;

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import { Plus, X } from "lucide-react-native";
 import * as Location from "expo-location";
 import {
@@ -14,14 +14,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "expo-router";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useRides } from "@/contexts/RideContext";
+import { useRides, PostedRide } from "@/contexts/RideContext";
+import { api } from "@/lib/api";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.75;
-
-// Placeholder identity until real auth/profile data is wired in.
-const CURRENT_DRIVER_NAME = "Kwame";
 
 export default function Rides() {
   const role = useUserRole();
@@ -29,6 +28,26 @@ export default function Rides() {
   const insets = useSafeAreaInsets();
 
   const { postedRides, requests, postRide } = useRides();
+
+  // Driver's own posted rides, fetched from the dedicated endpoint rather
+  // than filtered client-side, so it's correct no matter who's logged in.
+  const [myRides, setMyRides] = useState<PostedRide[]>([]);
+
+  const loadMyRides = useCallback(async () => {
+    if (!isDriver) return;
+    try {
+      const data = await api.get("/rides/mine/");
+      setMyRides(data.map((r: any) => ({ ...r, id: String(r.id) })));
+    } catch {
+      // leave whatever was already shown
+    }
+  }, [isDriver]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadMyRides();
+    }, [loadMyRides])
+  );
 
   // Post-a-ride sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -95,8 +114,6 @@ export default function Rides() {
   const handlePostRide = async () => {
     if (!canSubmit) return;
 
-    // Capture the driver's current location at the moment they post,
-    // so this ride actually shows up as a marker on the commuter's map.
     let driverLocation: { latitude: number; longitude: number } | null = null;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -110,20 +127,25 @@ export default function Rides() {
         };
       }
     } catch {
-      // If location can't be read, the ride still posts — it just won't
-      // appear as a map marker until driverLocation is available.
+      // ride still posts without a map marker if location can't be read
     }
 
-    postRide({
-      driverName: CURRENT_DRIVER_NAME,
-      destination: destination.trim(),
-      date: date.trim(),
-      fare: fare.trim(),
-      seatsTotal: Number(seats.trim()) || 0,
-      driverLocation,
-    });
-
-    closeSheet();
+    try {
+      // No driverName here — the backend attaches the logged-in driver
+      // automatically from the JWT.
+      await postRide({
+        destination: destination.trim(),
+        date: date.trim(),
+        fare: fare.trim(),
+        seatsTotal: Number(seats.trim()) || 0,
+        driverLocation,
+      });
+      await loadMyRides();
+      closeSheet();
+    } catch (err: any) {
+      // TODO: surface this in the sheet UI instead of swallowing it
+      console.error("Failed to post ride:", err.message);
+    }
   };
 
   return (
@@ -135,7 +157,7 @@ export default function Rides() {
 
         {isDriver ? (
           <FlatList
-            data={postedRides.filter((r) => r.driverName === CURRENT_DRIVER_NAME)}
+            data={myRides}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }}
             renderItem={({ item }) => {
@@ -210,22 +232,20 @@ export default function Rides() {
             data={postedRides}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24 }}
-            renderItem={({ item }) => {
-              return (
-                <View className="py-4 border-b border-gray-100">
-                  <Text className="text-base font-medium text-gray-900">
-                    {item.destination}
-                  </Text>
-                  <View className="flex-row justify-between mt-1.5">
-                    <Text className="text-sm text-gray-500">{item.date}</Text>
-                    <Text className="text-sm text-gray-700">{item.fare}</Text>
-                  </View>
-                  <Text className="text-sm text-gray-500 mt-1">
-                    Driver — {item.driverName} · {item.seatsFilled}/{item.seatsTotal} seats filled
-                  </Text>
+            renderItem={({ item }) => (
+              <View className="py-4 border-b border-gray-100">
+                <Text className="text-base font-medium text-gray-900">
+                  {item.destination}
+                </Text>
+                <View className="flex-row justify-between mt-1.5">
+                  <Text className="text-sm text-gray-500">{item.date}</Text>
+                  <Text className="text-sm text-gray-700">{item.fare}</Text>
                 </View>
-              );
-            }}
+                <Text className="text-sm text-gray-500 mt-1">
+                  Driver — {item.driverName} · {item.seatsFilled}/{item.seatsTotal} seats filled
+                </Text>
+              </View>
+            )}
             ListEmptyComponent={
               <Text className="text-gray-500 mt-8 text-center">No rides yet.</Text>
             }
@@ -239,7 +259,7 @@ export default function Rides() {
             style={{
               position: "absolute",
               right: 20,
-              bottom: insets.bottom + 20,
+              bottom: insets.bottom,
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.2,
@@ -317,7 +337,7 @@ export default function Rides() {
               <TextInput
                 value={date}
                 onChangeText={setDate}
-                placeholder="e.g. Jul 25, 2026"
+                placeholder="YYYY-MM-DD"
                 style={{ outlineStyle: "none" } as any}
                 className="bg-gray-100 rounded-2xl px-4 py-3.5 mb-5 text-base text-gray-900"
               />
@@ -326,7 +346,7 @@ export default function Rides() {
               <TextInput
                 value={fare}
                 onChangeText={setFare}
-                placeholder="e.g. GHS 25.00"
+                placeholder="e.g. 25.00"
                 keyboardType="numbers-and-punctuation"
                 style={{ outlineStyle: "none" } as any}
                 className="bg-gray-100 rounded-2xl px-4 py-3.5 mb-5 text-base text-gray-900"
