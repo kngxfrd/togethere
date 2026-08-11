@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from "react";
-import { Plus, X } from "lucide-react-native";
+import { MapPin, Plus, X } from "lucide-react-native";
 import * as Location from "expo-location";
 import {
   Animated,
@@ -152,7 +152,7 @@ export default function Rides() {
     <View className="flex-1">
       <SafeAreaView className="flex-1 bg-white">
         <Text className="text-2xl font-bold text-gray-900 px-6 pt-6 mb-6">
-          {isDriver ? "Your posted rides" : "Available rides"}
+          {isDriver ? "Your posted rides" : "Rides"}
         </Text>
 
         {isDriver ? (
@@ -164,9 +164,12 @@ export default function Rides() {
               const rideRequests = requests.filter((r) => r.rideId === item.id);
               return (
                 <View className="py-4 border-b border-gray-100">
-                  <Text className="text-base font-medium text-gray-900">
-                    {item.destination}
-                  </Text>
+                  <View className="flex-row items-center">
+                    <MapPin size={14} color="#C0392B" style={{ marginRight: 4 }} />
+                    <Text className="text-base font-medium text-gray-900">
+                      {item.destination}
+                    </Text>
+                  </View>
                   <View className="flex-row justify-between mt-1.5">
                     <Text className="text-sm text-gray-500">{item.date}</Text>
                     <Text className="text-sm text-gray-700">{item.fare}</Text>
@@ -234,9 +237,12 @@ export default function Rides() {
             contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24 }}
             renderItem={({ item }) => (
               <View className="py-4 border-b border-gray-100">
-                <Text className="text-base font-medium text-gray-900">
-                  {item.destination}
-                </Text>
+                <View className="flex-row items-center">
+                  <MapPin size={14} color="#C0392B" style={{ marginRight: 4 }} />
+                  <Text className="text-base font-medium text-gray-900">
+                    {item.destination}
+                  </Text>
+                </View>
                 <View className="flex-row justify-between mt-1.5">
                   <Text className="text-sm text-gray-500">{item.date}</Text>
                   <Text className="text-sm text-gray-700">{item.fare}</Text>
@@ -266,7 +272,7 @@ export default function Rides() {
               shadowRadius: 10,
               elevation: 8,
             }}
-            className="w-14 h-14 rounded-full bg-black items-center justify-center"
+            className="w-14 h-14 rounded-full bg-[#C0392B] items-center justify-center"
           >
             <Plus size={26} color="#ffffff" />
           </TouchableOpacity>
@@ -367,7 +373,7 @@ export default function Rides() {
                 disabled={!canSubmit}
                 activeOpacity={0.8}
                 className={`rounded-2xl py-4 items-center ${
-                  canSubmit ? "bg-black" : "bg-gray-300"
+                  canSubmit ? "bg-[#C0392B]" : "bg-red-300"
                 }`}
               >
                 <Text className="text-white font-semibold text-base">

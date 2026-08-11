@@ -1,6 +1,6 @@
 import { Coordinate, PostedRide, useRides } from "@/contexts/RideContext";
 import * as Location from "expo-location";
-import { LocateFixed, Search } from "lucide-react-native";
+import { LocateFixed, MapPin, Search } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -66,7 +66,7 @@ function DriverMarker({
       <View style={{ alignItems: "center" }}>
         <View
           style={{
-            backgroundColor: isSelected ? "#111827" : "#ffffff",
+            backgroundColor: isSelected ? "#C0392B" : "#ffffff",
             borderRadius: 8,
             paddingHorizontal: 10,
             paddingVertical: 5,
@@ -114,7 +114,7 @@ function DriverMarker({
               alignItems: "center",
               justifyContent: "center",
               borderWidth: 2,
-              borderColor: isSelected ? "#111827" : "#f97316",
+              borderColor: isSelected ? "#111827" : "#C0392B",
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.3,
@@ -455,7 +455,7 @@ export default function home() {
           elevation: 6,
         }}
       >
-        <LocateFixed size={22} color="#111827" />
+        <LocateFixed size={22} color="#C0392B" />
       </TouchableOpacity>
 
       <View
@@ -511,15 +511,20 @@ export default function home() {
                 keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    className="px-4 py-3 border-b border-gray-100"
+                    className="flex-row items-center px-4 py-3 border-b border-gray-100"
                     onPress={() => handleSelectSuggestion(item)}
                   >
-                    <Text className="text-gray-900 text-sm font-medium">
-                      {item.destination}
-                    </Text>
-                    <Text className="text-gray-500 text-xs mt-0.5">
-                      {item.driverName} · {item.fare}
-                    </Text>
+                    <View className="w-8 h-8 rounded-full bg-[#FDEDEC] items-center justify-center mr-3">
+                      <MapPin size={16} color="#C0392B" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-gray-900 text-sm font-medium">
+                        {item.destination}
+                      </Text>
+                      <Text className="text-gray-500 text-xs mt-0.5">
+                        {item.driverName} · {item.fare}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 )}
               />
@@ -563,9 +568,14 @@ export default function home() {
 
         {selectedRide ? (
           <View className="px-5">
-            <Text className="text-lg font-semibold text-gray-900 mb-1">
-              {selectedRide.driverName} → {selectedRide.destination}
-            </Text>
+            <View className="flex-row items-center mb-1">
+              <View className="w-7 h-7 rounded-full bg-[#FDEDEC] items-center justify-center mr-2">
+                <MapPin size={14} color="#C0392B" />
+              </View>
+              <Text className="text-lg font-semibold text-gray-900">
+                {selectedRide.driverName} → {selectedRide.destination}
+              </Text>
+            </View>
             <Text className="text-sm text-gray-500 mb-1">
               {selectedRide.date}
             </Text>
@@ -579,7 +589,7 @@ export default function home() {
             {selectedRideStatus === "accepted" ? (
               <View className="self-start bg-green-100 rounded-full px-4 py-2">
                 <Text className="text-green-700 text-sm font-medium">
-                  Accepted — check Chats
+                  Request Accepted!
                 </Text>
               </View>
             ) : selectedRideStatus === "pending" ? (
@@ -602,7 +612,7 @@ export default function home() {
                 className={`self-start rounded-full px-5 py-2.5 ${
                   selectedRide.seatsFilled >= selectedRide.seatsTotal
                     ? "bg-gray-200"
-                    : "bg-black"
+                    : "bg-[#C0392B]"
                 }`}
               >
                 <Text
@@ -641,15 +651,20 @@ export default function home() {
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    className="py-3 border-b border-gray-100"
+                    className="flex-row items-center py-3 border-b border-gray-100"
                     onPress={() => goToRide(item)}
                   >
-                    <Text className="text-base font-medium text-gray-900">
-                      {item.driverName} → {item.destination}
-                    </Text>
-                    <View className="flex-row justify-between mt-1">
-                      <Text className="text-sm text-gray-500">{item.date}</Text>
-                      <Text className="text-sm text-gray-700">{item.fare}</Text>
+                    <View className="w-8 h-8 rounded-full bg-[#FDEDEC] items-center justify-center mr-3">
+                      <MapPin size={16} color="#C0392B" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-base font-medium text-gray-900">
+                        {item.driverName} → {item.destination}
+                      </Text>
+                      <View className="flex-row justify-between mt-1">
+                        <Text className="text-sm text-gray-500">{item.date}</Text>
+                        <Text className="text-sm text-gray-700">{item.fare}</Text>
+                      </View>
                     </View>
                   </TouchableOpacity>
                 )}
@@ -669,9 +684,10 @@ export default function home() {
                 {recentSearches.map((s) => (
                   <TouchableOpacity
                     key={s}
-                    className="py-3 border-b border-gray-100"
+                    className="flex-row items-center py-3 border-b border-gray-100"
                     onPress={() => handleTapRecentSearch(s)}
                   >
+                    <MapPin size={16} color="#C0392B" style={{ marginRight: 10 }} />
                     <Text className="text-base text-gray-900">{s}</Text>
                   </TouchableOpacity>
                 ))}

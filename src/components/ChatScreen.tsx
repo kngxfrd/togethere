@@ -122,7 +122,7 @@ export default function ChatScreen({
             >
               <View
                 className={`rounded-2xl px-4 py-2.5 ${
-                  item.fromMe ? "bg-black" : "bg-gray-100"
+                  item.fromMe ? "bg-[#C0392B]" : "bg-gray-100"
                 }`}
               >
                 <Text
@@ -150,13 +150,13 @@ export default function ChatScreen({
             onPress={sendMessage}
             disabled={!draft.trim()}
             className={`w-10 h-10 rounded-full items-center justify-center ${
-              draft.trim() ? "bg-black" : "bg-gray-200"
+              draft.trim() ? "bg-[#C0392B]" : "bg-red-300"
             }`}
             activeOpacity={0.7}
           >
             <Send
               size={18}
-              color={draft.trim() ? "#fff" : "#9ca3af"}
+              color={draft.trim() ? "#fff" : "#fff"}
               strokeWidth={2}
             />
           </TouchableOpacity>

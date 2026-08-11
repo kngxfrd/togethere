@@ -78,7 +78,7 @@ export default function Signup() {
             activeOpacity={0.8}
             className={`flex-1 flex-row items-center justify-center rounded-xl py-3 border ${
               role === "commuter"
-                ? "bg-black border-black"
+                ? "bg-[#C0392B] border-[#C0392B]"
                 : "bg-gray-100 border-gray-200"
             }`}
           >
@@ -100,7 +100,7 @@ export default function Signup() {
             activeOpacity={0.8}
             className={`flex-1 flex-row items-center justify-center rounded-xl py-3 border ${
               role === "driver"
-                ? "bg-black border-black"
+                ? "bg-[#C0392B] border-[#C0392B]"
                 : "bg-gray-100 border-gray-200"
             }`}
           >
@@ -201,7 +201,7 @@ export default function Signup() {
           disabled={loading}
           activeOpacity={0.8}
           className={`rounded-xl py-4 items-center ${
-            loading ? "bg-gray-400" : "bg-black"
+            loading ? "bg-red-300" : "bg-[#C0392B]"
           }`}
         >
           {loading ? (
@@ -217,7 +217,7 @@ export default function Signup() {
           <Text className="text-gray-500">Already have an account? </Text>
           <Link href="/(auth)/login" asChild>
             <TouchableOpacity>
-              <Text className="text-black font-semibold">Log in</Text>
+              <Text className="text-[#C0392B] font-semibold">Log in</Text>
             </TouchableOpacity>
           </Link>
         </View>

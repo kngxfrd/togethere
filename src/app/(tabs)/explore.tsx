@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
+import { CheckCircle2, Clock3, MapPin, XCircle } from "lucide-react-native";
 import { useRides, PostedRide } from "@/contexts/RideContext";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
@@ -19,15 +20,38 @@ const SHEET_HEIGHT = SCREEN_HEIGHT * 0.6;
 
 type SortOption = "newest" | "priceLowHigh" | "seatsAvailable";
 
-const SORT_OPTIONS: { key: SortOption; label: string }[] = [
-  { key: "newest", label: "Newest" },
-  { key: "priceLowHigh", label: "Price: Low to High" },
-  { key: "seatsAvailable", label: "Seats Available" },
+
+
+type StatusFilter = "all" | "pending" | "accepted" | "declined";
+
+const STATUS_FILTER_OPTIONS: { key: StatusFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "Pending" },
+  { key: "accepted", label: "Accepted" },
+  { key: "declined", label: "Declined" },
 ];
 
 // Fare strings look like "$12.50" — strip anything that isn't a digit or
 // decimal point so they sort numerically rather than lexicographically.
 const parseFare = (fare: string) => parseFloat(fare.replace(/[^0-9.]/g, "")) || 0;
+
+// Small colored icon badge that replaces the old "Accepted / Declined /
+// Request sent" text in the ride cards.
+function StatusBadge({ status }: { status: "accepted" | "pending" | "declined" }) {
+  const config = {
+    accepted: { Icon: CheckCircle2, bg: "bg-green-100", color: "#15803d" },
+    pending: { Icon: Clock3, bg: "bg-yellow-100", color: "#a16207" },
+    declined: { Icon: XCircle, bg: "bg-red-100", color: "#b91c1c" },
+  }[status];
+
+  const { Icon, bg, color } = config;
+
+  return (
+    <View className={`w-7 h-7 rounded-full items-center justify-center ${bg}`}>
+      <Icon size={15} color={color} />
+    </View>
+  );
+}
 
 export default function Explore() {
   const { postedRides, requests, requestRide, refresh } = useRides();
@@ -35,6 +59,7 @@ export default function Explore() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const [statusFilterBy, setStatusFilterBy] = useState<StatusFilter>("all");
 
   useFocusEffect(
     useCallback(() => {
@@ -119,6 +144,15 @@ export default function Explore() {
     }
   }, [postedRides, sortBy]);
 
+  // Applies the status filter on top of the already-sorted list, so sort
+  // order is preserved within the filtered results. "All" keeps every
+  // ride regardless of whether it has a request on it at all.
+  const visibleRides = useMemo(() => {
+    if (statusFilterBy === "all") return sortedRides;
+    return sortedRides.filter((ride) => statusFor(ride) === statusFilterBy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedRides, statusFilterBy, requests]);
+
   return (
     <View className="flex-1">
       <SafeAreaView className="flex-1 bg-white">
@@ -126,17 +160,20 @@ export default function Explore() {
           Explore
         </Text>
 
+
+          
+
         <View className="flex-row px-6 mb-4" style={{ gap: 8 }}>
-          {SORT_OPTIONS.map((opt) => {
-            const active = sortBy === opt.key;
+          {STATUS_FILTER_OPTIONS.map((opt) => {
+            const active = statusFilterBy === opt.key;
             return (
               <TouchableOpacity
                 key={opt.key}
-                onPress={() => setSortBy(opt.key)}
+                onPress={() => setStatusFilterBy(opt.key)}
                 activeOpacity={0.75}
                 className={`px-3 py-1.5 rounded-full border ${
                   active
-                    ? "bg-black"
+                    ? "bg-[#C0392B] border-[#C0392B]"
                     : "bg-gray-100 border-gray-200"
                 }`}
               >
@@ -153,13 +190,15 @@ export default function Explore() {
         </View>
 
         <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}>
-          {sortedRides.length === 0 && (
+          {visibleRides.length === 0 && (
             <Text className="text-gray-400 text-center mt-10">
-              No rides posted yet — check back soon.
+              {statusFilterBy === "all"
+                ? "No rides posted yet — check back soon."
+                : `No ${statusFilterBy} rides.`}
             </Text>
           )}
 
-          {sortedRides.map((ride) => {
+          {visibleRides.map((ride) => {
             const status = statusFor(ride);
             const full = ride.seatsFilled >= ride.seatsTotal;
             return (
@@ -176,32 +215,27 @@ export default function Explore() {
                 />
 
                 <View className="flex-1">
-                  <Text className="text-base font-semibold text-gray-900">
-                    {ride.destination}
-                  </Text>
+                  <View className="flex-row items-center">
+                    <MapPin size={14} color="#C0392B" style={{ marginRight: 4 }} />
+                    <Text className="text-base font-semibold text-gray-900">
+                      {ride.destination}
+                    </Text>
+                  </View>
                   <Text className="text-sm text-gray-500 mt-0.5">
                     {ride.driverName} · {ride.date}
                   </Text>
-                  <View className="flex-row justify-between items-center mt-2">
-                    <Text className="text-sm text-gray-700">{ride.fare}</Text>
-                    <Text className="text-xs text-gray-400">
-                      {ride.seatsFilled}/{ride.seatsTotal} seats
-                      {full ? " · Full" : ""}
-                    </Text>
+
+                  <View className="flex-row justify-between items-start mt-2">
+                    <View>
+                      <Text className="text-sm text-gray-700">{ride.fare}</Text>
+                      <Text className="text-xs text-gray-400 mt-0.5">
+                        {ride.seatsFilled}/{ride.seatsTotal} seats
+                        {full ? " · Full" : ""}
+                      </Text>
+                    </View>
+
+                    {status && <StatusBadge status={status} />}
                   </View>
-                  {status && (
-                    <Text
-                      className={`text-xs font-medium mt-2 ${
-                        status === "accepted"
-                          ? "text-green-700"
-                          : status === "declined"
-                          ? "text-red-700"
-                          : "text-yellow-700"
-                      }`}
-                    >
-                      {status === "accepted" ? "Accepted — check Chats" : status === "declined" ? "Declined" : "Request sent"}
-                    </Text>
-                  )}
                 </View>
               </TouchableOpacity>
             );
@@ -253,9 +287,12 @@ export default function Explore() {
 
                 <View className="bg-gray-50 rounded-2xl p-4 mb-6">
                   <Text className="text-sm text-gray-500 mb-1">Destination</Text>
-                  <Text className="text-base font-semibold text-gray-900 mb-3">
-                    {selectedRide.destination}
-                  </Text>
+                  <View className="flex-row items-center mb-3">
+                    <MapPin size={16} color="#C0392B" style={{ marginRight: 4 }} />
+                    <Text className="text-base font-semibold text-gray-900">
+                      {selectedRide.destination}
+                    </Text>
+                  </View>
                   <Text className="text-sm text-gray-500 mb-1">Date</Text>
                   <Text className="text-base font-semibold text-gray-900 mb-3">
                     {selectedRide.date}
@@ -272,7 +309,7 @@ export default function Explore() {
 
                 {selectedStatus === "accepted" ? (
                   <View className="bg-green-100 rounded-2xl py-4 items-center">
-                    <Text className="text-green-700 font-semibold">Accepted — check Chats</Text>
+                    <Text className="text-green-700 font-semibold">Request Accepted!</Text>
                   </View>
                 ) : selectedStatus === "pending" ? (
                   <View className="bg-yellow-100 rounded-2xl py-4 items-center">
@@ -287,7 +324,7 @@ export default function Explore() {
                     className={`rounded-2xl py-4 items-center ${
                       selectedRide.seatsFilled >= selectedRide.seatsTotal || requesting
                         ? "bg-gray-300"
-                        : "bg-black"
+                        : "bg-[#C0392B]"
                     }`}
                     activeOpacity={0.8}
                     disabled={selectedRide.seatsFilled >= selectedRide.seatsTotal || requesting}

@@ -43,8 +43,8 @@ function ToggleRow({
   return (
     <View className="flex-row items-center justify-between py-4 border-b border-gray-100">
       <View className="flex-row items-center flex-1 mr-3">
-        <View className="w-9 h-9 rounded-full bg-gray-50 items-center justify-center mr-3">
-          <Icon size={18} color="#374151" />
+        <View className="w-9 h-9 rounded-full bg-[#FDEDEC] items-center justify-center mr-3">
+          <Icon size={18} color="#C0392B" />
         </View>
         <View className="flex-1">
           <Text className="text-base text-gray-900">{label}</Text>
@@ -58,7 +58,7 @@ function ToggleRow({
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: "#e5e7eb", true: "#111827" }}
+        trackColor={{ false: "#e5e7eb", true: "#C0392B" }}
         thumbColor="#ffffff"
         ios_backgroundColor="#e5e7eb"
       />
@@ -86,14 +86,14 @@ function NavRow({ Icon, label, onPress, destructive, isLast }: NavRowProps) {
       <View className="flex-row items-center">
         <View
           className={`w-9 h-9 rounded-full items-center justify-center mr-3 ${
-            destructive ? "bg-red-50" : "bg-gray-50"
+            destructive ? "bg-[#FDEDEC]" : "bg-[#FDEDEC]"
           }`}
         >
-          <Icon size={18} color={destructive ? "#dc2626" : "#374151"} />
+          <Icon size={18} color="#C0392B" />
         </View>
         <Text
           className={`text-base ${
-            destructive ? "text-red-600" : "text-gray-900"
+            destructive ? "text-[#C0392B]" : "text-gray-900"
           }`}
         >
           {label}
@@ -152,8 +152,8 @@ export default function Settings() {
           onPress={() => {}}
         >
           <View className="flex-row items-center">
-            <View className="w-9 h-9 rounded-full bg-gray-50 items-center justify-center mr-3">
-              <Globe size={18} color="#374151" />
+            <View className="w-9 h-9 rounded-full bg-[#FDEDEC] items-center justify-center mr-3">
+              <Globe size={18} color="#C0392B" />
             </View>
             <Text className="text-base text-gray-900">Language</Text>
           </View>

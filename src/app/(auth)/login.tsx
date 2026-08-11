@@ -100,7 +100,7 @@ export default function Login() {
           disabled={loading}
           activeOpacity={0.8}
           className={`rounded-xl py-4 items-center ${
-            loading ? "bg-gray-400" : "bg-black"
+            loading ? "bg-red-300" : "bg-[#C0392B]"
           }`}
         >
           {loading ? (
@@ -114,7 +114,7 @@ export default function Login() {
           <Text className="text-gray-500">Don't have an account? </Text>
           <Link href="/(auth)/signup" asChild>
             <TouchableOpacity>
-              <Text className="text-black font-semibold">Sign up</Text>
+              <Text className="text-[#C0392B] font-semibold">Sign up</Text>
             </TouchableOpacity>
           </Link>
         </View>

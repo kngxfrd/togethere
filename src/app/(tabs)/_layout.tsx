@@ -115,7 +115,7 @@ export default function TabsLayout() {
         <Tabs
           screenOptions={{
             headerShown: false,
-            tabBarActiveTintColor: "#111827",
+            tabBarActiveTintColor: "#C0392B",
             tabBarInactiveTintColor: "#9CA3AF",
             tabBarStyle: hideChrome
               ? { display: "none" }
@@ -259,7 +259,7 @@ export default function TabsLayout() {
                   </Text>
                   {user.rating !== null && (
                     <View className="flex-row items-center mt-1">
-                      <Star size={14} color="#111827" fill="#111827" />
+                      <Star size={14} color="#C0392B" fill="#C0392B" />
                       <Text className="text-sm text-gray-700 ml-1">
                         {user.rating.toFixed(2)}
                       </Text>
@@ -280,8 +280,10 @@ export default function TabsLayout() {
                     onPress={() => handleMenuPress(route)}
                   >
                     <View className="flex-row items-center">
-                      <Icon size={20} color="#374151" />
-                      <Text className="text-base text-gray-900 ml-3">
+                      <View className="w-8 h-8 rounded-full bg-[#FDEDEC] items-center justify-center mr-3">
+                        <Icon size={16} color="#C0392B" />
+                      </View>
+                      <Text className="text-base text-gray-900">
                         {label}
                       </Text>
                     </View>
