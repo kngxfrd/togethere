@@ -1,8 +1,18 @@
 import { Link, router } from "expo-router";
-import { Eye, EyeOff, Lock, Mail, User, Phone, Car, Users } from "lucide-react-native";
+import {
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  User,
+  Phone,
+  Car,
+  Users,
+} from "lucide-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -54,23 +64,31 @@ export default function Signup() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      className="flex-1 bg-white"
+      className="flex-1 bg-white dark:bg-gray-900"
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
         keyboardShouldPersistTaps="handled"
         className="px-8"
       >
-
-        <View className="mb-6 mt-10">
-          <Text className="text-3xl font-bold text-gray-900 mb-2">
+        <View className="flex-row items-center mb-3">
+          <Image
+            source={require("../../../assets/images/Untitled-1ed copy.png")}
+            style={{ width: 32, height: 32, borderRadius: 8 }}
+            resizeMode="contain"
+          />
+          <Text className="text-4xl font-extrabold text-[#C0392B] ml-2 tracking-wide">
+            TOGETHERE
+          </Text>
+        </View>
+        <View className="mb-6">
+          <Text className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
             Create account
           </Text>
-          <Text className="text-base text-gray-500">
+          <Text className="text-base text-gray-500 dark:text-gray-400">
             Sign up to get started.
           </Text>
         </View>
-
 
         <View className="flex-row mb-5" style={{ gap: 12 }}>
           <TouchableOpacity
@@ -79,16 +97,18 @@ export default function Signup() {
             className={`flex-1 flex-row items-center justify-center rounded-xl py-3 border ${
               role === "commuter"
                 ? "bg-[#C0392B] border-[#C0392B]"
-                : "bg-gray-100 border-gray-200"
+                : "bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
             }`}
           >
             <Users
               size={18}
-              color={role === "commuter" ? "#ffffff" : "#374151"}
+              color={role === "commuter" ? "#ffffff" : "#9CA3AF"}
             />
             <Text
               className={`ml-2 font-semibold ${
-                role === "commuter" ? "text-white" : "text-gray-700"
+                role === "commuter"
+                  ? "text-white"
+                  : "text-gray-700 dark:text-gray-300"
               }`}
             >
               Commuter
@@ -101,16 +121,15 @@ export default function Signup() {
             className={`flex-1 flex-row items-center justify-center rounded-xl py-3 border ${
               role === "driver"
                 ? "bg-[#C0392B] border-[#C0392B]"
-                : "bg-gray-100 border-gray-200"
+                : "bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
             }`}
           >
-            <Car
-              size={18}
-              color={role === "driver" ? "#ffffff" : "#374151"}
-            />
+            <Car size={18} color={role === "driver" ? "#ffffff" : "#9CA3AF"} />
             <Text
               className={`ml-2 font-semibold ${
-                role === "driver" ? "text-white" : "text-gray-700"
+                role === "driver"
+                  ? "text-white"
+                  : "text-gray-700 dark:text-gray-300"
               }`}
             >
               Driver
@@ -118,7 +137,7 @@ export default function Signup() {
           </TouchableOpacity>
         </View>
 
-        <View className="flex-row items-center border border-gray-300 rounded-xl px-5 mb-3 bg-gray-100">
+        <View className="flex-row items-center border border-gray-300 dark:border-gray-700 rounded-xl px-5 mb-3 bg-gray-100 dark:bg-gray-900">
           <User size={20} color="#9CA3AF" />
           <TextInput
             placeholder="Full name"
@@ -127,12 +146,11 @@ export default function Signup() {
             onChangeText={setFullName}
             autoCapitalize="words"
             style={{ outlineStyle: "none" } as any}
-            className="flex-1 ml-3 py-3 text-base text-gray-900"
+            className="flex-1 ml-3 py-3 text-base text-gray-900 dark:text-gray-100"
           />
         </View>
 
-
-        <View className="flex-row items-center border border-gray-300 rounded-xl px-5 mb-3 bg-gray-100">
+        <View className="flex-row items-center border border-gray-300 dark:border-gray-700 rounded-xl px-5 mb-3 bg-gray-100 dark:bg-gray-900">
           <Mail size={20} color="#9CA3AF" />
           <TextInput
             placeholder="Email"
@@ -142,21 +160,20 @@ export default function Signup() {
             autoCapitalize="none"
             keyboardType="email-address"
             style={{ outlineStyle: "none" } as any}
-            className="flex-1 ml-3 py-3 text-base text-gray-900"
+            className="flex-1 ml-3 py-3 text-base text-gray-900 dark:text-gray-100"
           />
         </View>
 
-
-        <View className="flex-row items-center border border-gray-300 rounded-xl mb-3 bg-gray-100 px-5">
+        <View className="flex-row items-center border border-gray-300 dark:border-gray-700 rounded-xl mb-3 bg-gray-100 dark:bg-gray-900 px-5">
           <Phone size={20} color="#9CA3AF" />
           <TextInput
             value={countryCode}
             onChangeText={setCountryCode}
             keyboardType="phone-pad"
             style={{ outlineStyle: "none", width: 48 } as any}
-            className="ml-3 py-3 text-base text-gray-900 font-medium"
+            className="ml-3 py-3 text-base text-gray-900 dark:text-gray-100 font-medium"
           />
-          <View className="w-px h-6 bg-gray-300 mx-2" />
+          <View className="w-px h-6 bg-gray-300 dark:bg-gray-700 mx-2" />
           <TextInput
             placeholder="Phone number"
             placeholderTextColor="#9CA3AF"
@@ -164,12 +181,11 @@ export default function Signup() {
             onChangeText={setPhone}
             keyboardType="phone-pad"
             style={{ outlineStyle: "none" } as any}
-            className="flex-1 py-3 text-base text-gray-900"
+            className="flex-1 py-3 text-base text-gray-900 dark:text-gray-100"
           />
         </View>
 
-
-        <View className="flex-row items-center border border-gray-300 rounded-xl px-5 mb-6 bg-gray-100">
+        <View className="flex-row items-center border border-gray-300 dark:border-gray-700 rounded-xl px-5 mb-6 bg-gray-100 dark:bg-gray-900">
           <Lock size={20} color="#9CA3AF" />
           <TextInput
             placeholder="Password"
@@ -178,7 +194,7 @@ export default function Signup() {
             value={password}
             onChangeText={setPassword}
             style={{ outlineStyle: "none" } as any}
-            className="flex-1 ml-3 py-3 text-base text-gray-900"
+            className="flex-1 ml-3 py-3 text-base text-gray-900 dark:text-gray-100"
           />
           <TouchableOpacity onPress={() => setShowPassword((prev) => !prev)}>
             {showPassword ? (
@@ -191,17 +207,16 @@ export default function Signup() {
 
         {error ? (
           <View className="mb-4">
-            <Text className="text-red-600 text-xs">{error}</Text>
+            <Text className="text-red-600 dark:text-red-400 text-xs">{error}</Text>
           </View>
         ) : null}
-
 
         <TouchableOpacity
           onPress={handleSignup}
           disabled={loading}
           activeOpacity={0.8}
           className={`rounded-xl py-4 items-center ${
-            loading ? "bg-red-300" : "bg-[#C0392B]"
+            loading ? "bg-red-300 dark:bg-red-900" : "bg-[#C0392B]"
           }`}
         >
           {loading ? (
@@ -214,7 +229,9 @@ export default function Signup() {
         </TouchableOpacity>
 
         <View className="flex-row justify-center mt-6 mb-10">
-          <Text className="text-gray-500">Already have an account? </Text>
+          <Text className="text-gray-500 dark:text-gray-400">
+            Already have an account?{" "}
+          </Text>
           <Link href="/(auth)/login" asChild>
             <TouchableOpacity>
               <Text className="text-[#C0392B] font-semibold">Log in</Text>

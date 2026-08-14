@@ -1,3 +1,6 @@
+import { useChrome } from "@/app/(tabs)/_layout";
+import { useTheme } from "@/hooks/useTheme";
+import { Ionicons } from "@expo/vector-icons";
 import { ArrowLeft, Send } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
@@ -9,9 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useChrome } from "@/app/(tabs)/_layout";
 
 export type Chat = {
   id: string;
@@ -48,6 +49,7 @@ export default function ChatScreen({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const { setHideChrome } = useChrome();
+  const { isDark } = useTheme();
 
   // Keep the local list in sync if the parent screen refetches messages
   // (e.g. polling) and passes a new initialMessages array down.
@@ -78,27 +80,31 @@ export default function ChatScreen({
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-row items-center px-4 pt-5 pb-3 border-b border-gray-100">
+    <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
+      <View className="flex-row items-center px-4 pt-5 pb-3 border-b border-gray-100 dark:border-gray-800">
         <TouchableOpacity onPress={onBack} className="mr-3 p-1">
-          <ArrowLeft size={22} color="#111827" />
+          <ArrowLeft size={22} color={isDark ? "#f3f4f6" : "#111827"} />
         </TouchableOpacity>
 
-        <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3">
-          <Ionicons name="person" size={18} color="#374151" />
+        <View className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mr-3">
+          <Ionicons
+            name="person"
+            size={18}
+            color={isDark ? "#9ca3af" : "#374151"}
+          />
         </View>
 
         <View className="flex-1">
-          <Text className="text-base font-semibold text-gray-900">
+          <Text className="text-base font-semibold text-gray-900 dark:text-gray-100">
             {chat.name}
           </Text>
           <View className="flex-row items-center mt-0.5">
             <View
               className={`w-2 h-2 rounded-full mr-1.5 ${
-                chat.online ? "bg-green-500" : "bg-gray-300"
+                chat.online ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"
               }`}
             />
-            <Text className="text-xs text-gray-500">
+            <Text className="text-xs text-gray-500 dark:text-gray-400">
               {chat.online ? "Online" : "Offline"}
             </Text>
           </View>
@@ -122,35 +128,40 @@ export default function ChatScreen({
             >
               <View
                 className={`rounded-2xl px-4 py-2.5 ${
-                  item.fromMe ? "bg-[#C0392B]" : "bg-gray-100"
+                  item.fromMe ? "bg-[#C0392B]" : "bg-gray-100 dark:bg-gray-800"
                 }`}
               >
                 <Text
                   className={`text-base ${
-                    item.fromMe ? "text-white" : "text-gray-900"
+                    item.fromMe
+                      ? "text-white"
+                      : "text-gray-900 dark:text-gray-100"
                   }`}
                 >
                   {item.text}
                 </Text>
               </View>
-              <Text className="text-xs text-gray-400 mt-1">{item.time}</Text>
+              <Text className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                {item.time}
+              </Text>
             </View>
           )}
         />
 
-        <View className="flex-row items-center px-4 pt-6 border-t border-gray-100">
+        <View className="flex-row items-center px-4 pt-6 border-t border-gray-100 dark:border-gray-800">
           <TextInput
             value={draft}
             onChangeText={setDraft}
             style={{ outlineStyle: "none" } as any}
             placeholder="Type a message..."
-            className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-base text-gray-900 mr-3"
+            placeholderTextColor="#9CA3AF"
+            className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2.5 text-base text-gray-900 dark:text-gray-100 mr-3"
           />
           <TouchableOpacity
             onPress={sendMessage}
             disabled={!draft.trim()}
             className={`w-10 h-10 rounded-full items-center justify-center ${
-              draft.trim() ? "bg-[#C0392B]" : "bg-red-300"
+              draft.trim() ? "bg-[#C0392B]" : "bg-red-300 dark:bg-red-900"
             }`}
             activeOpacity={0.7}
           >

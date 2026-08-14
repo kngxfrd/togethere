@@ -4,7 +4,7 @@
     "slug": "Togethere",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/Untitled-1ed copy.png",
     "scheme": "togethere",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -52,7 +52,8 @@
         {
           "locationWhenInUsePermission": "We use your location to show your pickup point and nearby drivers."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

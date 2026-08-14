@@ -1,11 +1,13 @@
 import { useRef, useState, useCallback } from "react";
 import { MapPin, Plus, X } from "lucide-react-native";
 import * as Location from "expo-location";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   Animated,
   Dimensions,
   FlatList,
   PanResponder,
+  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -17,15 +19,26 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useFocusEffect } from "expo-router";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useRides, PostedRide } from "@/contexts/RideContext";
+import { useTheme } from "@/hooks/useTheme";
 import { api } from "@/lib/api";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.75;
 
+// Formats a Date as YYYY-MM-DD (zero-padded, local time — not UTC, so the
+// day shown always matches the day picked on-screen).
+function formatDate(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function Rides() {
   const role = useUserRole();
   const isDriver = role === "driver";
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
 
   const { postedRides, requests, postRide } = useRides();
 
@@ -53,6 +66,7 @@ export default function Rides() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [destination, setDestination] = useState("");
   const [date, setDate] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [fare, setFare] = useState("");
   const [seats, setSeats] = useState("");
 
@@ -77,6 +91,7 @@ export default function Rides() {
       setSheetOpen(false);
       setDestination("");
       setDate("");
+      setShowDatePicker(false);
       setFare("");
       setSeats("");
     });
@@ -150,8 +165,8 @@ export default function Rides() {
 
   return (
     <View className="flex-1">
-      <SafeAreaView className="flex-1 bg-white">
-        <Text className="text-2xl font-bold text-gray-900 px-6 pt-6 mb-6">
+      <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
+        <Text className="text-2xl font-bold text-gray-900 dark:text-gray-100 px-6 pt-6 mb-6">
           {isDriver ? "Your posted rides" : "Rides"}
         </Text>
 
@@ -163,18 +178,18 @@ export default function Rides() {
             renderItem={({ item }) => {
               const rideRequests = requests.filter((r) => r.rideId === item.id);
               return (
-                <View className="py-4 border-b border-gray-100">
+                <View className="py-4 border-b border-gray-100 dark:border-gray-800">
                   <View className="flex-row items-center">
                     <MapPin size={14} color="#C0392B" style={{ marginRight: 4 }} />
-                    <Text className="text-base font-medium text-gray-900">
+                    <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
                       {item.destination}
                     </Text>
                   </View>
                   <View className="flex-row justify-between mt-1.5">
-                    <Text className="text-sm text-gray-500">{item.date}</Text>
-                    <Text className="text-sm text-gray-700">{item.fare}</Text>
+                    <Text className="text-sm text-gray-500 dark:text-gray-400">{item.date}</Text>
+                    <Text className="text-sm text-gray-700 dark:text-gray-300">{item.fare}</Text>
                   </View>
-                  <Text className="text-sm text-gray-500 mt-1 mb-2">
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-2">
                     {item.seatsFilled}/{item.seatsTotal} seats filled
                   </Text>
 
@@ -185,25 +200,25 @@ export default function Rides() {
                           key={req.id}
                           className="flex-row items-center justify-between py-1"
                         >
-                          <Text className="text-sm text-gray-700">
+                          <Text className="text-sm text-gray-700 dark:text-gray-300">
                             {req.commuterName}
                           </Text>
                           <View
                             className={`rounded-full px-3 py-1 ${
                               req.status === "accepted"
-                                ? "bg-green-100"
+                                ? "bg-green-100 dark:bg-green-900"
                                 : req.status === "declined"
-                                ? "bg-red-100"
-                                : "bg-yellow-100"
+                                ? "bg-red-100 dark:bg-red-900"
+                                : "bg-yellow-100 dark:bg-yellow-900"
                             }`}
                           >
                             <Text
                               className={`text-xs font-medium ${
                                 req.status === "accepted"
-                                  ? "text-green-700"
+                                  ? "text-green-700 dark:text-green-300"
                                   : req.status === "declined"
-                                  ? "text-red-700"
-                                  : "text-yellow-700"
+                                  ? "text-red-700 dark:text-red-300"
+                                  : "text-yellow-700 dark:text-yellow-300"
                               }`}
                             >
                               {req.status === "accepted"
@@ -217,7 +232,7 @@ export default function Rides() {
                       ))}
                     </View>
                   ) : (
-                    <Text className="text-xs text-gray-400 mt-1">
+                    <Text className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                       No bookings yet
                     </Text>
                   )}
@@ -225,7 +240,7 @@ export default function Rides() {
               );
             }}
             ListEmptyComponent={
-              <Text className="text-gray-500 mt-8 text-center">
+              <Text className="text-gray-500 dark:text-gray-400 mt-8 text-center">
                 You haven't posted any rides yet.
               </Text>
             }
@@ -236,24 +251,24 @@ export default function Rides() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24 }}
             renderItem={({ item }) => (
-              <View className="py-4 border-b border-gray-100">
+              <View className="py-4 border-b border-gray-100 dark:border-gray-800">
                 <View className="flex-row items-center">
                   <MapPin size={14} color="#C0392B" style={{ marginRight: 4 }} />
-                  <Text className="text-base font-medium text-gray-900">
+                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
                     {item.destination}
                   </Text>
                 </View>
                 <View className="flex-row justify-between mt-1.5">
-                  <Text className="text-sm text-gray-500">{item.date}</Text>
-                  <Text className="text-sm text-gray-700">{item.fare}</Text>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400">{item.date}</Text>
+                  <Text className="text-sm text-gray-700 dark:text-gray-300">{item.fare}</Text>
                 </View>
-                <Text className="text-sm text-gray-500 mt-1">
+                <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                   Driver — {item.driverName} · {item.seatsFilled}/{item.seatsTotal} seats filled
                 </Text>
               </View>
             )}
             ListEmptyComponent={
-              <Text className="text-gray-500 mt-8 text-center">No rides yet.</Text>
+              <Text className="text-gray-500 dark:text-gray-400 mt-8 text-center">No rides yet.</Text>
             }
           />
         )}
@@ -300,7 +315,7 @@ export default function Rides() {
               left: 0,
               right: 0,
               height: SHEET_HEIGHT,
-              backgroundColor: "#ffffff",
+              backgroundColor: isDark ? "#0a0a0f" : "#ffffff",
               transform: [{ translateY }],
               shadowColor: "#000",
               shadowOffset: { width: 0, height: -4 },
@@ -315,7 +330,7 @@ export default function Rides() {
               className="flex-row items-center justify-between px-6 pt-3 pb-2"
             >
               <View style={{ width: 28 }} />
-              <View className="w-10 h-1.5 bg-gray-300 rounded-full" />
+              <View className="w-10 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full" />
               <TouchableOpacity onPress={closeSheet} hitSlop={10}>
                 <X size={22} color="#6b7280" />
               </TouchableOpacity>
@@ -326,46 +341,72 @@ export default function Rides() {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              <Text className="text-xl font-bold text-gray-900 mb-6">
+              <Text className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6">
                 Post a ride
               </Text>
 
-              <Text className="text-sm text-gray-500 mb-2">Destination</Text>
+              <Text className="text-sm text-gray-500 dark:text-gray-400 mb-2">Destination</Text>
               <TextInput
                 value={destination}
                 onChangeText={setDestination}
                 placeholder="e.g. Asafo VIP Station"
+                placeholderTextColor="#9CA3AF"
                 style={{ outlineStyle: "none" } as any}
-                className="bg-gray-100 rounded-2xl px-4 py-3.5 mb-5 text-base text-gray-900"
+                className="bg-gray-100 dark:bg-gray-900 rounded-2xl px-4 py-3.5 mb-5 text-base text-gray-900 dark:text-gray-100"
               />
 
-              <Text className="text-sm text-gray-500 mb-2">Date</Text>
-              <TextInput
-                value={date}
-                onChangeText={setDate}
-                placeholder="YYYY-MM-DD"
-                style={{ outlineStyle: "none" } as any}
-                className="bg-gray-100 rounded-2xl px-4 py-3.5 mb-5 text-base text-gray-900"
-              />
+              <Text className="text-sm text-gray-500 dark:text-gray-400 mb-2">Date</Text>
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(true)}
+                activeOpacity={0.8}
+                className="bg-gray-100 dark:bg-gray-900 rounded-2xl px-4 py-3.5 mb-5"
+              >
+                <Text
+                  className={
+                    date
+                      ? "text-base text-gray-900 dark:text-gray-100"
+                      : "text-base text-gray-400 dark:text-gray-500"
+                  }
+                >
+                  {date || "YYYY-MM-DD"}
+                </Text>
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={date ? new Date(date) : new Date()}
+                  mode="date"
+                  minimumDate={new Date()}
+                  display={Platform.OS === "ios" ? "inline" : "default"}
+                  onChange={(event, selectedDate) => {
+                    setShowDatePicker(Platform.OS === "ios");
+                    if (event.type === "dismissed") return;
+                    if (selectedDate) {
+                      setDate(formatDate(selectedDate));
+                    }
+                  }}
+                />
+              )}
 
-              <Text className="text-sm text-gray-500 mb-2">Fare</Text>
+              <Text className="text-sm text-gray-500 dark:text-gray-400 mb-2">Fare</Text>
               <TextInput
                 value={fare}
                 onChangeText={setFare}
                 placeholder="e.g. 25.00"
+                placeholderTextColor="#9CA3AF"
                 keyboardType="numbers-and-punctuation"
                 style={{ outlineStyle: "none" } as any}
-                className="bg-gray-100 rounded-2xl px-4 py-3.5 mb-5 text-base text-gray-900"
+                className="bg-gray-100 dark:bg-gray-900 rounded-2xl px-4 py-3.5 mb-5 text-base text-gray-900 dark:text-gray-100"
               />
 
-              <Text className="text-sm text-gray-500 mb-2">Available seats</Text>
+              <Text className="text-sm text-gray-500 dark:text-gray-400 mb-2">Available seats</Text>
               <TextInput
                 value={seats}
                 onChangeText={setSeats}
                 placeholder="e.g. 4"
+                placeholderTextColor="#9CA3AF"
                 keyboardType="number-pad"
                 style={{ outlineStyle: "none" } as any}
-                className="bg-gray-100 rounded-2xl px-4 py-3.5 mb-8 text-base text-gray-900"
+                className="bg-gray-100 dark:bg-gray-900 rounded-2xl px-4 py-3.5 mb-8 text-base text-gray-900 dark:text-gray-100"
               />
 
               <TouchableOpacity
@@ -373,7 +414,7 @@ export default function Rides() {
                 disabled={!canSubmit}
                 activeOpacity={0.8}
                 className={`rounded-2xl py-4 items-center ${
-                  canSubmit ? "bg-[#C0392B]" : "bg-red-300"
+                  canSubmit ? "bg-[#C0392B]" : "bg-red-300 dark:bg-red-900"
                 }`}
               >
                 <Text className="text-white font-semibold text-base">

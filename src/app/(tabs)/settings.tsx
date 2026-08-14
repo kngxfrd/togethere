@@ -1,29 +1,24 @@
+import { useTheme } from "@/hooks/useTheme";
 import { router } from "expo-router";
-import { useState } from "react";
-import {
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-  Switch,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ArrowLeft,
   Bell,
-  Moon,
-  Globe,
-  Lock,
-  Eye,
-  MapPin,
-  ShieldCheck,
-  FileText,
-  HelpCircle,
-  MessageCircle,
-  Star,
-  LogOut,
   ChevronRight,
+  Eye,
+  FileText,
+  Globe,
+  HelpCircle,
+  Lock,
+  LogOut,
+  MapPin,
+  MessageCircle,
+  Moon,
+  ShieldCheck,
+  Star,
 } from "lucide-react-native";
+import { useState } from "react";
+import { ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type ToggleRowProps = {
   Icon: typeof Bell;
@@ -41,15 +36,17 @@ function ToggleRow({
   onValueChange,
 }: ToggleRowProps) {
   return (
-    <View className="flex-row items-center justify-between py-4 border-b border-gray-100">
+    <View className="flex-row items-center justify-between py-4 border-b border-gray-100 dark:border-gray-800">
       <View className="flex-row items-center flex-1 mr-3">
-        <View className="w-9 h-9 rounded-full bg-[#FDEDEC] items-center justify-center mr-3">
+        <View className="w-9 h-9 rounded-full bg-[#FDEDEC] dark:bg-[#3a2422] items-center justify-center mr-3">
           <Icon size={18} color="#C0392B" />
         </View>
         <View className="flex-1">
-          <Text className="text-base text-gray-900">{label}</Text>
+          <Text className="text-base text-gray-900 dark:text-gray-100">
+            {label}
+          </Text>
           {description && (
-            <Text className="text-xs text-gray-500 mt-0.5">
+            <Text className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               {description}
             </Text>
           )}
@@ -78,7 +75,7 @@ function NavRow({ Icon, label, onPress, destructive, isLast }: NavRowProps) {
   return (
     <TouchableOpacity
       className={`flex-row items-center justify-between py-4 ${
-        isLast ? "" : "border-b border-gray-100"
+        isLast ? "" : "border-b border-gray-100 dark:border-gray-800"
       }`}
       activeOpacity={0.6}
       onPress={onPress}
@@ -86,14 +83,16 @@ function NavRow({ Icon, label, onPress, destructive, isLast }: NavRowProps) {
       <View className="flex-row items-center">
         <View
           className={`w-9 h-9 rounded-full items-center justify-center mr-3 ${
-            destructive ? "bg-[#FDEDEC]" : "bg-[#FDEDEC]"
+            destructive
+              ? "bg-[#FDEDEC] dark:bg-[#3a2422]"
+              : "bg-[#FDEDEC] dark:bg-[#3a2422]"
           }`}
         >
           <Icon size={18} color="#C0392B" />
         </View>
         <Text
           className={`text-base ${
-            destructive ? "text-[#C0392B]" : "text-gray-900"
+            destructive ? "text-[#C0392B]" : "text-gray-900 dark:text-gray-100"
           }`}
         >
           {label}
@@ -106,32 +105,35 @@ function NavRow({ Icon, label, onPress, destructive, isLast }: NavRowProps) {
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 mt-8 px-1">
+    <Text className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2 mt-8 px-1">
       {children}
     </Text>
   );
 }
 
 export default function Settings() {
+  const { isDark, toggle } = useTheme();
+
   const [pushEnabled, setPushEnabled] = useState(true);
   const [rideUpdates, setRideUpdates] = useState(true);
   const [promotions, setPromotions] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [shareLocation, setShareLocation] = useState(true);
   const [profileVisible, setProfileVisible] = useState(true);
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
       {/* Header */}
-      <View className="flex-row items-center px-4 pt-6 pb-4 border-b border-gray-100">
+      <View className="flex-row items-center px-4 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800">
         <TouchableOpacity
           onPress={() => router.back()}
           className="mr-3 p-1"
           activeOpacity={0.7}
         >
-          <ArrowLeft size={22} color="#111827" />
+          <ArrowLeft size={22} color={isDark ? "#f3f4f6" : "#111827"} />
         </TouchableOpacity>
-        <Text className="text-xl font-bold text-gray-900">Settings</Text>
+        <Text className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          Settings
+        </Text>
       </View>
 
       <ScrollView
@@ -143,8 +145,8 @@ export default function Settings() {
         <ToggleRow
           Icon={Moon}
           label="Dark mode"
-          value={darkMode}
-          onValueChange={setDarkMode}
+          value={isDark}
+          onValueChange={toggle}
         />
         <TouchableOpacity
           className="flex-row items-center justify-between py-4"
@@ -152,13 +154,17 @@ export default function Settings() {
           onPress={() => {}}
         >
           <View className="flex-row items-center">
-            <View className="w-9 h-9 rounded-full bg-[#FDEDEC] items-center justify-center mr-3">
+            <View className="w-9 h-9 rounded-full bg-[#FDEDEC] dark:bg-[#3a2422] items-center justify-center mr-3">
               <Globe size={18} color="#C0392B" />
             </View>
-            <Text className="text-base text-gray-900">Language</Text>
+            <Text className="text-base text-gray-900 dark:text-gray-100">
+              Language
+            </Text>
           </View>
           <View className="flex-row items-center">
-            <Text className="text-sm text-gray-400 mr-1">English</Text>
+            <Text className="text-sm text-gray-400 dark:text-gray-500 mr-1">
+              English
+            </Text>
             <ChevronRight size={18} color="#9ca3af" />
           </View>
         </TouchableOpacity>
@@ -200,17 +206,8 @@ export default function Settings() {
           value={profileVisible}
           onValueChange={setProfileVisible}
         />
-        <NavRow
-          Icon={ShieldCheck}
-          label="Safety toolkit"
-          onPress={() => {}}
-        />
-        <NavRow
-          Icon={Lock}
-          label="Privacy policy"
-          onPress={() => {}}
-          isLast
-        />
+        <NavRow Icon={ShieldCheck} label="Safety toolkit" onPress={() => {}} />
+        <NavRow Icon={Lock} label="Privacy policy" onPress={() => {}} isLast />
 
         {/* Support */}
         <SectionLabel>Support</SectionLabel>
@@ -235,7 +232,7 @@ export default function Settings() {
           }}
         />
 
-        <Text className="text-xs text-gray-300 text-center mt-10">
+        <Text className="text-xs text-gray-300 dark:text-gray-600 text-center mt-10">
           Version 1.0.0
         </Text>
       </ScrollView>

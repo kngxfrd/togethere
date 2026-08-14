@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import { CheckCircle2, Clock3, MapPin, XCircle } from "lucide-react-native";
 import { useRides, PostedRide } from "@/contexts/RideContext";
+import { useTheme } from "@/hooks/useTheme";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.6;
@@ -39,9 +40,9 @@ const parseFare = (fare: string) => parseFloat(fare.replace(/[^0-9.]/g, "")) || 
 // Request sent" text in the ride cards.
 function StatusBadge({ status }: { status: "accepted" | "pending" | "declined" }) {
   const config = {
-    accepted: { Icon: CheckCircle2, bg: "bg-green-100", color: "#15803d" },
-    pending: { Icon: Clock3, bg: "bg-yellow-100", color: "#a16207" },
-    declined: { Icon: XCircle, bg: "bg-red-100", color: "#b91c1c" },
+    accepted: { Icon: CheckCircle2, bg: "bg-green-100 dark:bg-green-900", color: "#15803d" },
+    pending: { Icon: Clock3, bg: "bg-yellow-100 dark:bg-yellow-900", color: "#a16207" },
+    declined: { Icon: XCircle, bg: "bg-red-100 dark:bg-red-900", color: "#b91c1c" },
   }[status];
 
   const { Icon, bg, color } = config;
@@ -55,6 +56,7 @@ function StatusBadge({ status }: { status: "accepted" | "pending" | "declined" }
 
 export default function Explore() {
   const { postedRides, requests, requestRide, refresh } = useRides();
+  const { isDark } = useTheme();
   const [selectedRide, setSelectedRide] = useState<PostedRide | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [requesting, setRequesting] = useState(false);
@@ -155,8 +157,8 @@ export default function Explore() {
 
   return (
     <View className="flex-1">
-      <SafeAreaView className="flex-1 bg-white">
-        <Text className="text-2xl font-bold text-gray-900 px-6 pt-7 mb-4">
+      <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
+        <Text className="text-2xl font-bold text-gray-900 dark:text-gray-100 px-6 pt-7 mb-4">
           Explore
         </Text>
 
@@ -174,12 +176,12 @@ export default function Explore() {
                 className={`px-3 py-1.5 rounded-full border ${
                   active
                     ? "bg-[#C0392B] border-[#C0392B]"
-                    : "bg-gray-100 border-gray-200"
+                    : "bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
                 }`}
               >
                 <Text
                   className={`text-xs font-semibold ${
-                    active ? "text-white" : "text-gray-700"
+                    active ? "text-white" : "text-gray-700 dark:text-gray-300"
                   }`}
                 >
                   {opt.label}
@@ -191,7 +193,7 @@ export default function Explore() {
 
         <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}>
           {visibleRides.length === 0 && (
-            <Text className="text-gray-400 text-center mt-10">
+            <Text className="text-gray-400 dark:text-gray-500 text-center mt-10">
               {statusFilterBy === "all"
                 ? "No rides posted yet — check back soon."
                 : `No ${statusFilterBy} rides.`}
@@ -204,7 +206,7 @@ export default function Explore() {
             return (
               <TouchableOpacity
                 key={ride.id}
-                className="bg-gray-50 rounded-2xl px-4 py-4 mb-3 flex-row items-center"
+                className="bg-gray-50 dark:bg-gray-800 rounded-2xl px-4 py-4 mb-3 flex-row items-center"
                 activeOpacity={0.7}
                 onPress={() => openRide(ride)}
               >
@@ -217,18 +219,18 @@ export default function Explore() {
                 <View className="flex-1">
                   <View className="flex-row items-center">
                     <MapPin size={14} color="#C0392B" style={{ marginRight: 4 }} />
-                    <Text className="text-base font-semibold text-gray-900">
+                    <Text className="text-base font-semibold text-gray-900 dark:text-gray-100">
                       {ride.destination}
                     </Text>
                   </View>
-                  <Text className="text-sm text-gray-500 mt-0.5">
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                     {ride.driverName} · {ride.date}
                   </Text>
 
                   <View className="flex-row justify-between items-start mt-2">
                     <View>
-                      <Text className="text-sm text-gray-700">{ride.fare}</Text>
-                      <Text className="text-xs text-gray-400 mt-0.5">
+                      <Text className="text-sm text-gray-700 dark:text-gray-300">{ride.fare}</Text>
+                      <Text className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                         {ride.seatsFilled}/{ride.seatsTotal} seats
                         {full ? " · Full" : ""}
                       </Text>
@@ -256,18 +258,18 @@ export default function Explore() {
               left: 0,
               right: 0,
               height: SHEET_HEIGHT,
-              backgroundColor: "#ffffff",
+              backgroundColor: isDark ? "#111827" : "#ffffff",
               transform: [{ translateY }],
-              shadowColor: "#000",
+              shadowColor: isDark ? "#ffffff":"#000",
               shadowOffset: { width: 0, height: -4 },
-              shadowOpacity: 0.15,
+              shadowOpacity: isDark? 0.06 : 0.15,
               shadowRadius: 16,
               elevation: 20,
             }}
-            className="rounded-t-3xl"
+            className="rounded-t-3xl "
           >
             <View {...panResponder.panHandlers} className="items-center pt-3 pb-2">
-              <View className="w-10 h-1.5 bg-gray-300 rounded-full" />
+              <View className="w-10 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full" />
             </View>
 
             {selectedRide && (
@@ -280,50 +282,50 @@ export default function Explore() {
                   />
                 </View>
 
-                <Text className="text-xl font-bold text-gray-900 mb-1">
+                <Text className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
                   {selectedRide.driverName}
                 </Text>
-                <Text className="text-gray-500 mb-6">Driver</Text>
+                <Text className="text-gray-500 dark:text-gray-400 mb-6">Driver</Text>
 
-                <View className="bg-gray-50 rounded-2xl p-4 mb-6">
-                  <Text className="text-sm text-gray-500 mb-1">Destination</Text>
+                <View className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-4 mb-6">
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mb-1">Destination</Text>
                   <View className="flex-row items-center mb-3">
                     <MapPin size={16} color="#C0392B" style={{ marginRight: 4 }} />
-                    <Text className="text-base font-semibold text-gray-900">
+                    <Text className="text-base font-semibold text-gray-900 dark:text-gray-100">
                       {selectedRide.destination}
                     </Text>
                   </View>
-                  <Text className="text-sm text-gray-500 mb-1">Date</Text>
-                  <Text className="text-base font-semibold text-gray-900 mb-3">
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mb-1">Date</Text>
+                  <Text className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
                     {selectedRide.date}
                   </Text>
-                  <Text className="text-sm text-gray-500 mb-1">Fare</Text>
-                  <Text className="text-base font-semibold text-gray-900 mb-3">
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mb-1">Fare</Text>
+                  <Text className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
                     {selectedRide.fare}
                   </Text>
-                  <Text className="text-sm text-gray-500 mb-1">Seats</Text>
-                  <Text className="text-base font-semibold text-gray-900">
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mb-1">Seats</Text>
+                  <Text className="text-base font-semibold text-gray-900 dark:text-gray-100">
                     {selectedRide.seatsFilled}/{selectedRide.seatsTotal} filled
                   </Text>
                 </View>
 
                 {selectedStatus === "accepted" ? (
-                  <View className="bg-green-100 rounded-2xl py-4 items-center">
-                    <Text className="text-green-700 font-semibold">Request Accepted!</Text>
+                  <View className="bg-green-100 dark:bg-green-900 rounded-2xl py-4 items-center">
+                    <Text className="text-green-700 dark:text-green-300 font-semibold">Request Accepted!</Text>
                   </View>
                 ) : selectedStatus === "pending" ? (
-                  <View className="bg-yellow-100 rounded-2xl py-4 items-center">
-                    <Text className="text-yellow-700 font-semibold">Request sent</Text>
+                  <View className="bg-yellow-100 dark:bg-yellow-900 rounded-2xl py-4 items-center">
+                    <Text className="text-yellow-700 dark:text-yellow-300 font-semibold">Request sent</Text>
                   </View>
                 ) : selectedStatus === "declined" ? (
-                  <View className="bg-red-100 rounded-2xl py-4 items-center">
-                    <Text className="text-red-700 font-semibold">Declined</Text>
+                  <View className="bg-red-100 dark:bg-red-900 rounded-2xl py-4 items-center">
+                    <Text className="text-red-700 dark:text-red-300 font-semibold">Declined</Text>
                   </View>
                 ) : (
                   <TouchableOpacity
                     className={`rounded-2xl py-4 items-center ${
                       selectedRide.seatsFilled >= selectedRide.seatsTotal || requesting
-                        ? "bg-gray-300"
+                        ? "bg-gray-300 dark:bg-gray-800"
                         : "bg-[#C0392B]"
                     }`}
                     activeOpacity={0.8}

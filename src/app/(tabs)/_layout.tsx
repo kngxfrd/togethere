@@ -3,6 +3,7 @@ import { createContext, useContext, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
+  Image,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -27,6 +28,8 @@ import {
   Star,
 } from "lucide-react-native";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 
 // Shared with other tab screens (e.g. chats.tsx) so they can tell this
 // layout to hide the tab bar + hamburger button without needing a route change.
@@ -46,30 +49,18 @@ const PANEL_WIDTH = Math.min(320, SCREEN_WIDTH * 0.82);
 // Each item now carries an optional route. Items without one just close the panel for now.
 const MENU_ITEMS = [
   { label: "Profile", Icon: UserCircle2, route: "/(tabs)/account" },
-  { label: "Payment", Icon: CreditCard, route: null },
-  { label: "Support", Icon: HelpCircle, route: null },
-  { label: "Safety", Icon: ShieldCheck, route: null },
-  { label: "Saved places", Icon: MapPin, route: null },
   { label: "Settings", Icon: SettingsIcon, route: "/(tabs)/settings" },
 ] as const;
-
-// TODO: replace with your real auth/user source (context, hook, store, etc.)
-// This is just a placeholder so the panel has something to render.
-function getCurrentUser() {
-  return {
-    name: "User",
-    rating: null as number | null,
-  };
-}
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const isAccountScreen = pathname.includes("/account");
   const isSettingsScreen = pathname.includes("/settings");
-  const user = getCurrentUser();
+  const { user } = useAuth(); // expect { name, rating } shape
   const role = useUserRole();
   const isDriver = role === "driver";
+  const { isDark } = useTheme();
 
   const [hideChromeFromChild, setHideChromeFromChild] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -116,7 +107,7 @@ export default function TabsLayout() {
           screenOptions={{
             headerShown: false,
             tabBarActiveTintColor: "#C0392B",
-            tabBarInactiveTintColor: "#9CA3AF",
+            tabBarInactiveTintColor: isDark ? "#6b7280" : "#9CA3AF",
             tabBarStyle: hideChrome
               ? { display: "none" }
               : {
@@ -125,6 +116,7 @@ export default function TabsLayout() {
                   paddingTop: 6,
                   borderTopWidth: 0,
                   borderTopColor: "transparent",
+                  backgroundColor: isDark ? "#0d0d1a" : "#ffffff",
                   shadowColor: "#000",
                   shadowOffset: { width: 0, height: -2 },
                   shadowOpacity: 0.1,
@@ -198,10 +190,10 @@ export default function TabsLayout() {
               shadowRadius: 8,
               elevation: 5,
             }}
-            className="absolute right-5 w-12 h-12 mt-1 rounded-full bg-gray-50 items-center justify-center"
+            className="absolute right-5 w-12 h-12 mt-1 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center"
             activeOpacity={0.7}
           >
-            <Menu size={24} color="#111827" />
+            <Menu size={24} color={isDark ? "#f3f4f6" : "#111827"} />
           </TouchableOpacity>
         )}
 
@@ -219,7 +211,7 @@ export default function TabsLayout() {
                 bottom: 0,
                 right: 0,
                 width: PANEL_WIDTH,
-                backgroundColor: "#ffffff",
+                backgroundColor: isDark ? "#111827" : "#ffffff",
                 transform: [{ translateX }],
                 shadowColor: "#000",
                 shadowOffset: { width: -4, height: 0 },
@@ -236,35 +228,57 @@ export default function TabsLayout() {
                 }}
                 showsVerticalScrollIndicator={false}
               >
+                {/* Logo + wordmark */}
+                <View className="flex-row items-center mb-6 border-b border-gray-100 dark:border-gray-800 h-20">
+                  <Image
+                    source={require("../../../assets/images/Untitled-1ed copy.png")}
+                    style={{ width: 30, height: 30, borderRadius: 6 }}
+                    resizeMode="contain"
+                  />
+                  <Text className="text-3xl font-extrabold text-[#C0392B] ml-2 tracking-wide">
+                    TOGETHERE
+                  </Text>
+                </View>
+
                 {/* Avatar + name + rating */}
                 <TouchableOpacity
-                  className="items-start mb-5"
+                  className="flex-row items-center mb-5"
                   activeOpacity={0.7}
                   onPress={() => handleMenuPress("/(tabs)/account")}
                 >
-                  <View className="relative mb-3">
-                    <View className="w-20 h-20 rounded-full bg-gray-100 items-center justify-center">
-                      <UserCircle2 size={40} color="#9ca3af" />
+                  <View className="relative mr-3">
+                    <View className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center">
+                      <UserCircle2 size={40} color={isDark ? "#6b7280" : "#9ca3af"} />
                     </View>
                     <TouchableOpacity
-                      className="absolute -right-1 -bottom-1 w-8 h-8 rounded-full bg-gray-100 items-center justify-center"
+                      className="absolute -right-1 -bottom-1 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 items-center justify-center"
                       activeOpacity={0.7}
                     >
-                      <Camera size={16} color="#111827" />
+                      <Camera size={16} color={isDark ? "#f3f4f6" : "#111827"} />
                     </TouchableOpacity>
                   </View>
 
-                  <Text className="text-xl font-bold text-gray-900">
-                    {user.name}
-                  </Text>
-                  {user.rating !== null && (
+                  <View className="flex-1">
+                    <Text className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                      {user?.name ?? "…"}
+                    </Text>
+
                     <View className="flex-row items-center mt-1">
-                      <Star size={14} color="#C0392B" fill="#C0392B" />
-                      <Text className="text-sm text-gray-700 ml-1">
-                        {user.rating.toFixed(2)}
-                      </Text>
+                      <View
+                        className={`px-2 py-0.5 rounded-full mr-2 ${
+                          isDriver ? "bg-[#FDEDEC] dark:bg-[#3a2422]" : "bg-gray-100 dark:bg-gray-800"
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs font-medium ${
+                            isDriver ? "text-[#C0392B]" : "text-gray-600 dark:text-gray-300"
+                          }`}
+                        >
+                          {isDriver ? "Driver" : "Commuter"}
+                        </Text>
+                      </View>
                     </View>
-                  )}
+                  </View>
                 </TouchableOpacity>
 
                 {/* Menu items */}
@@ -273,21 +287,19 @@ export default function TabsLayout() {
                     key={label}
                     className={`flex-row items-center justify-between py-4 ${
                       index !== MENU_ITEMS.length - 1
-                        ? "border-b border-gray-100"
+                        ? "border-b border-gray-100 dark:border-gray-800"
                         : ""
                     }`}
                     activeOpacity={0.6}
                     onPress={() => handleMenuPress(route)}
                   >
                     <View className="flex-row items-center">
-                      <View className="w-8 h-8 rounded-full bg-[#FDEDEC] items-center justify-center mr-3">
+                      <View className="w-8 h-8 rounded-full bg-[#FDEDEC] dark:bg-[#3a2422] items-center justify-center mr-3">
                         <Icon size={16} color="#C0392B" />
                       </View>
-                      <Text className="text-base text-gray-900">
-                        {label}
-                      </Text>
+                      <Text className="text-base text-gray-900 dark:text-gray-100">{label}</Text>
                     </View>
-                    <ChevronRight size={18} color="#9ca3af" />
+                    <ChevronRight size={18} color={isDark ? "#6b7280" : "#9ca3af"} />
                   </TouchableOpacity>
                 ))}
               </ScrollView>

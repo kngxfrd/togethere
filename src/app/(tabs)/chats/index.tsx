@@ -1,17 +1,19 @@
-import { router, useFocusEffect } from "expo-router";
+import { Chat } from "@/components/ChatScreen";
+import { RideRequest, useRides } from "@/contexts/RideContext";
+import { useTheme } from "@/hooks/useTheme";
+import { useUserRole } from "@/hooks/useUserRole";
+import { api } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Chat } from "@/components/ChatScreen";
-import { useUserRole } from "@/hooks/useUserRole";
-import { useRides, RideRequest } from "@/contexts/RideContext";
-import { api } from "@/lib/api";
 
 export default function ChatsList() {
   const role = useUserRole();
   const isDriver = role === "driver";
   const { acceptRequest, declineRequest } = useRides();
+  const { isDark } = useTheme();
 
   const [chats, setChats] = useState<Chat[]>([]);
   const [pendingRequests, setPendingRequests] = useState<RideRequest[]>([]);
@@ -21,27 +23,33 @@ export default function ChatsList() {
     if (!isDriver) return;
     try {
       const data = await api.get("/requests/pending/");
-      setPendingRequests(data.map((r: any) => ({ ...r, id: String(r.id), rideId: String(r.rideId) })));
+      setPendingRequests(
+        data.map((r: any) => ({
+          ...r,
+          id: String(r.id),
+          rideId: String(r.rideId),
+        })),
+      );
     } catch {
       // leave whatever was already shown
     }
   }, [isDriver]);
 
   const loadChats = useCallback(async () => {
-  try {
-    const data = await api.get("/chats/");
-    console.log("CHATS RESPONSE:", data);
-    setChats(data);
-  } catch (err) {
-    console.log("CHATS FAILED:", err);
-  }
-}, []);
+    try {
+      const data = await api.get("/chats/");
+      console.log("CHATS RESPONSE:", data);
+      setChats(data);
+    } catch (err) {
+      console.log("CHATS FAILED:", err);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       loadChats();
       loadPending();
-    }, [loadChats, loadPending])
+    }, [loadChats, loadPending]),
   );
 
   const handleAccept = async (requestId: string) => {
@@ -65,25 +73,25 @@ export default function ChatsList() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <Text className="text-2xl font-bold text-gray-900 px-6 pt-6 mb-6">
+    <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
+      <Text className="text-2xl font-bold text-gray-900 dark:text-gray-100 px-6 pt-6 mb-6">
         Chats
       </Text>
 
       {isDriver && pendingRequests.length > 0 && (
         <View className="px-6 mb-4">
-          <Text className="text-sm font-semibold text-gray-500 mb-3">
+          <Text className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3">
             Ride requests
           </Text>
           {pendingRequests.map((req) => (
             <View
               key={req.id}
-              className="border border-gray-100 rounded-2xl p-4 mb-3"
+              className="border border-gray-100 dark:border-gray-800 rounded-2xl p-4 mb-3"
             >
-              <Text className="text-base font-medium text-gray-900">
+              <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
                 {req.commuterName}
               </Text>
-              <Text className="text-sm text-gray-500 mt-0.5">
+              <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                 {req.destination} · {req.date} · {req.fare}
               </Text>
               <View className="flex-row mt-3" style={{ gap: 10 }}>
@@ -91,9 +99,9 @@ export default function ChatsList() {
                   onPress={() => handleAccept(req.id)}
                   disabled={respondingId === req.id}
                   activeOpacity={0.8}
-                  className="flex-1 bg-black rounded-xl py-2.5 items-center"
+                  className="flex-1 bg-black dark:bg-gray-100 rounded-xl py-2.5 items-center"
                 >
-                  <Text className="text-white font-semibold text-sm">
+                  <Text className="text-white dark:text-gray-900 font-semibold text-sm">
                     {respondingId === req.id ? "…" : "Accept"}
                   </Text>
                 </TouchableOpacity>
@@ -101,9 +109,9 @@ export default function ChatsList() {
                   onPress={() => handleDecline(req.id)}
                   disabled={respondingId === req.id}
                   activeOpacity={0.8}
-                  className="flex-1 bg-gray-100 rounded-xl py-2.5 items-center"
+                  className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl py-2.5 items-center"
                 >
-                  <Text className="text-gray-700 font-semibold text-sm">
+                  <Text className="text-gray-700 dark:text-gray-300 font-semibold text-sm">
                     Decline
                   </Text>
                 </TouchableOpacity>
@@ -119,7 +127,7 @@ export default function ChatsList() {
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24 }}
         renderItem={({ item }) => (
           <TouchableOpacity
-            className="flex-row items-center py-4 border-b border-gray-100"
+            className="flex-row items-center py-4 border-b border-gray-100 dark:border-gray-800"
             onPress={() =>
               router.push({
                 pathname: "/(tabs)/chats/[id]",
@@ -127,22 +135,28 @@ export default function ChatsList() {
               })
             }
           >
-            <View className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center mr-4">
-              <Ionicons name="person" size={20} color="#374151" />
+            <View className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mr-4">
+              <Ionicons
+                name="person"
+                size={20}
+                color={isDark ? "#9ca3af" : "#374151"}
+              />
             </View>
             <View className="flex-1 mr-3">
-              <Text className="text-base font-medium text-gray-900">
+              <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
                 {item.name}
               </Text>
-              <Text className="text-sm text-gray-500 mt-0.5">
+              <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                 {item.lastMessage}
               </Text>
             </View>
-            <Text className="text-xs text-gray-400">{item.time}</Text>
+            <Text className="text-xs text-gray-400 dark:text-gray-500">
+              {item.time}
+            </Text>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
-          <Text className="text-gray-500 mt-8 text-center">
+          <Text className="text-gray-500 dark:text-gray-400 mt-8 text-center">
             No conversations yet.
           </Text>
         }

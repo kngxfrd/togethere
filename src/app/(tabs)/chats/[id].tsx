@@ -1,12 +1,11 @@
-import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import ChatScreen, { Chat, Message } from "@/components/ChatScreen";
+import { useRides } from "@/contexts/RideContext";
+import { useUserRole } from "@/hooks/useUserRole";
+import { api } from "@/lib/api";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useRef, useState } from "react";
 import { Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
-import ChatScreen, { Chat, Message } from "@/components/ChatScreen";
-import { useUserRole } from "@/hooks/useUserRole";
-import { useRides } from "@/contexts/RideContext";
-import { api } from "@/lib/api";
 
 const POLL_INTERVAL_MS = 4000;
 
@@ -17,7 +16,9 @@ export default function ChatDetail() {
   const { requests } = useRides();
 
   const requestId = id?.startsWith("req-") ? id.slice(4) : id;
-  const req = requests.find((r) => r.id === requestId && r.status === "accepted");
+  const req = requests.find(
+    (r) => r.id === requestId && r.status === "accepted",
+  );
 
   const [messages, setMessages] = useState<Message[]>([]);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -42,7 +43,7 @@ export default function ChatDetail() {
       return () => {
         if (pollRef.current) clearInterval(pollRef.current);
       };
-    }, [fetchMessages])
+    }, [fetchMessages]),
   );
 
   const handleSend = (text: string) => {
@@ -56,8 +57,10 @@ export default function ChatDetail() {
 
   if (!req) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
-        <Text className="text-gray-500">Chat not found.</Text>
+      <SafeAreaView className="flex-1 bg-white dark:bg-gray-900 items-center justify-center">
+        <Text className="text-gray-500 dark:text-gray-400">
+          Chat not found.
+        </Text>
       </SafeAreaView>
     );
   }
@@ -65,7 +68,8 @@ export default function ChatDetail() {
   const chat: Chat = {
     id: `req-${req.id}`,
     name: isDriver ? req.commuterName : `Driver — ${req.driverName}`,
-    lastMessage: messages[messages.length - 1]?.text ?? `${req.destination} · ${req.date}`,
+    lastMessage:
+      messages[messages.length - 1]?.text ?? `${req.destination} · ${req.date}`,
     time: messages[messages.length - 1]?.time ?? req.requestedAt,
     online: true,
   };

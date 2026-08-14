@@ -1,4 +1,5 @@
 import { Coordinate, PostedRide, useRides } from "@/contexts/RideContext";
+import { useTheme } from "@/hooks/useTheme";
 import * as Location from "expo-location";
 import { LocateFixed, MapPin, Search } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -28,6 +29,74 @@ const PEEK_HEIGHT = 200;
 const FALLBACK_COORD = { latitude: 5.6037, longitude: -0.187 };
 const CURRENT_COMMUTER_NAME = "You";
 const MAX_RECENT_SEARCHES = 5;
+
+// Muted "night mode" Google Maps style, applied to the MapView when the
+// app is in dark mode via `customMapStyle`.
+const DARK_MAP_STYLE = [
+  { elementType: "geometry", stylers: [{ color: "#1d2129" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#1d2129" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#8a8f98" }] },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#c9cdd4" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#767b85" }],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "geometry",
+    stylers: [{ color: "#26302f" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#2a2f38" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#1d2129" }],
+  },
+  {
+    featureType: "road",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#8a8f98" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#3a3f4a" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#1d2129" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#c9cdd4" }],
+  },
+  {
+    featureType: "transit",
+    elementType: "geometry",
+    stylers: [{ color: "#2a2f38" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#0f1620" }],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#5c6470" }],
+  },
+];
 
 function DriverMarker({
   ride,
@@ -138,6 +207,7 @@ export default function home() {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
   const { postedRides, requests, requestRide } = useRides();
+  const { isDark } = useTheme();
 
   const [pickupCoord, setPickupCoord] = useState(FALLBACK_COORD);
   const [hasCenteredOnUser, setHasCenteredOnUser] = useState(false);
@@ -151,6 +221,10 @@ export default function home() {
 
   // --- Ride selected from a map marker, shown in the bottom sheet ---
   const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
+
+  // --- Whether the bottom sheet has been pulled up far enough to cover
+  // the floating recenter button, so we can hide the button underneath it ---
+  const [hideRecenterButton, setHideRecenterButton] = useState(false);
 
   const [expandedHeight, setExpandedHeight] = useState(SCREEN_HEIGHT * 0.85);
   const expandedHeightRef = useRef(expandedHeight);
@@ -377,6 +451,18 @@ export default function home() {
     }).start();
   };
 
+  // The recenter button sits COLLAPSED_HEIGHT + 20 up from the bottom, so
+  // once the sheet rises past that point it would start covering the
+  // button — hide it right at that threshold.
+  useEffect(() => {
+    const id = translateY.addListener(({ value }) => {
+      const maxOffset = expandedHeightRef.current - COLLAPSED_HEIGHT;
+      const threshold = maxOffset - 20;
+      setHideRecenterButton(value < threshold);
+    });
+    return () => translateY.removeListener(id);
+  }, []);
+
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 5,
@@ -413,6 +499,7 @@ export default function home() {
         showsUserLocation
         showsMyLocationButton={false}
         onPress={handleDeselect}
+        customMapStyle={isDark ? DARK_MAP_STYLE : []}
         initialRegion={{
           latitude: pickupCoord.latitude,
           longitude: pickupCoord.longitude,
@@ -434,29 +521,31 @@ export default function home() {
         ))}
       </MapView>
 
-      <TouchableOpacity
-        onPress={handleRecenter}
-        activeOpacity={0.8}
-        style={{
-          position: "absolute",
-          right: 16,
-          bottom: COLLAPSED_HEIGHT + 20,
-          zIndex: 15,
-          width: 46,
-          height: 46,
-          borderRadius: 23,
-          backgroundColor: "#fff",
-          alignItems: "center",
-          justifyContent: "center",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.2,
-          shadowRadius: 6,
-          elevation: 6,
-        }}
-      >
-        <LocateFixed size={22} color="#C0392B" />
-      </TouchableOpacity>
+      {!hideRecenterButton && (
+        <TouchableOpacity
+          onPress={handleRecenter}
+          activeOpacity={0.8}
+          style={{
+            position: "absolute",
+            right: 16,
+            bottom: COLLAPSED_HEIGHT + 20,
+            zIndex: 15,
+            width: 46,
+            height: 46,
+            borderRadius: 23,
+            backgroundColor: isDark ? "#111827" : "#fff",
+            alignItems: "center",
+            justifyContent: "center",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 6,
+            elevation: 6,
+          }}
+        >
+          <LocateFixed size={22} color="#C0392B" />
+        </TouchableOpacity>
+      )}
 
       <View
         style={{ top: insets.top + 12, zIndex: 20 }}
@@ -464,7 +553,7 @@ export default function home() {
         onLayout={handleSearchBoxLayout}
       >
         <View
-          className="flex-row items-center rounded-3xl px-5 py-3 bg-white"
+          className="flex-row items-center rounded-3xl px-5 py-3 bg-white dark:bg-gray-900"
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
@@ -487,13 +576,13 @@ export default function home() {
             placeholder="Search destinations on the map"
             placeholderTextColor="#9ca3af"
             style={{ outlineStyle: "none" } as any}
-            className="flex-1 ml-2 text-base text-gray-900"
+            className="flex-1 ml-2 text-base text-gray-900 dark:text-gray-100"
           />
         </View>
 
         {showSuggestions && query.trim().length > 0 && (
           <View
-            className="mt-2 bg-white rounded-2xl overflow-hidden"
+            className="mt-2 bg-white dark:bg-gray-900 rounded-2xl overflow-hidden"
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
@@ -511,17 +600,17 @@ export default function home() {
                 keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    className="flex-row items-center px-4 py-3 border-b border-gray-100"
+                    className="flex-row items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800"
                     onPress={() => handleSelectSuggestion(item)}
                   >
-                    <View className="w-8 h-8 rounded-full bg-[#FDEDEC] items-center justify-center mr-3">
+                    <View className="w-8 h-8 rounded-full bg-[#FDEDEC] dark:bg-[#3a2422] items-center justify-center mr-3">
                       <MapPin size={16} color="#C0392B" />
                     </View>
                     <View className="flex-1">
-                      <Text className="text-gray-900 text-sm font-medium">
+                      <Text className="text-gray-900 dark:text-gray-100 text-sm font-medium">
                         {item.destination}
                       </Text>
-                      <Text className="text-gray-500 text-xs mt-0.5">
+                      <Text className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">
                         {item.driverName} · {item.fare}
                       </Text>
                     </View>
@@ -530,7 +619,7 @@ export default function home() {
               />
             ) : (
               <View className="px-4 py-3">
-                <Text className="text-gray-500 text-sm">
+                <Text className="text-gray-500 dark:text-gray-400 text-sm">
                   No drivers heading to "{query.trim()}"
                 </Text>
               </View>
@@ -548,11 +637,11 @@ export default function home() {
           height: expandedHeight,
           transform: [{ translateY }],
         }}
-        className="bg-white rounded-t-3xl"
+        className="bg-white dark:bg-gray-900 rounded-t-3xl"
         {...panResponder.panHandlers}
       >
         <View
-          className="absolute inset-0 rounded-t-3xl bg-white"
+          className="absolute inset-0 rounded-t-3xl bg-white dark:bg-gray-900"
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: -2 },
@@ -563,44 +652,44 @@ export default function home() {
         />
 
         <View className="items-center py-3">
-          <View className="w-10 h-1.5 rounded-full bg-gray-300" />
+          <View className="w-10 h-1.5 rounded-full bg-gray-300 dark:bg-gray-700" />
         </View>
 
         {selectedRide ? (
           <View className="px-5">
             <View className="flex-row items-center mb-1">
-              <View className="w-7 h-7 rounded-full bg-[#FDEDEC] items-center justify-center mr-2">
+              <View className="w-7 h-7 rounded-full bg-[#FDEDEC] dark:bg-[#3a2422] items-center justify-center mr-2">
                 <MapPin size={14} color="#C0392B" />
               </View>
-              <Text className="text-lg font-semibold text-gray-900">
+              <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {selectedRide.driverName} → {selectedRide.destination}
               </Text>
             </View>
-            <Text className="text-sm text-gray-500 mb-1">
+            <Text className="text-sm text-gray-500 dark:text-gray-400 mb-1">
               {selectedRide.date}
             </Text>
-            <Text className="text-sm text-gray-700 mb-1">
+            <Text className="text-sm text-gray-700 dark:text-gray-300 mb-1">
               {selectedRide.fare}
             </Text>
-            <Text className="text-sm text-gray-500 mb-4">
+            <Text className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               {selectedRide.seatsFilled}/{selectedRide.seatsTotal} seats filled
             </Text>
 
             {selectedRideStatus === "accepted" ? (
-              <View className="self-start bg-green-100 rounded-full px-4 py-2">
-                <Text className="text-green-700 text-sm font-medium">
+              <View className="self-start bg-green-100 dark:bg-green-900 rounded-full px-4 py-2">
+                <Text className="text-green-700 dark:text-green-300 text-sm font-medium">
                   Request Accepted!
                 </Text>
               </View>
             ) : selectedRideStatus === "pending" ? (
-              <View className="self-start bg-yellow-100 rounded-full px-4 py-2">
-                <Text className="text-yellow-700 text-sm font-medium">
+              <View className="self-start bg-yellow-100 dark:bg-yellow-900 rounded-full px-4 py-2">
+                <Text className="text-yellow-700 dark:text-yellow-300 text-sm font-medium">
                   Request sent
                 </Text>
               </View>
             ) : selectedRideStatus === "declined" ? (
-              <View className="self-start bg-red-100 rounded-full px-4 py-2">
-                <Text className="text-red-700 text-sm font-medium">
+              <View className="self-start bg-red-100 dark:bg-red-900 rounded-full px-4 py-2">
+                <Text className="text-red-700 dark:text-red-300 text-sm font-medium">
                   Declined
                 </Text>
               </View>
@@ -611,14 +700,14 @@ export default function home() {
                 activeOpacity={0.8}
                 className={`self-start rounded-full px-5 py-2.5 ${
                   selectedRide.seatsFilled >= selectedRide.seatsTotal
-                    ? "bg-gray-200"
+                    ? "bg-gray-200 dark:bg-gray-800"
                     : "bg-[#C0392B]"
                 }`}
               >
                 <Text
                   className={`text-sm font-semibold ${
                     selectedRide.seatsFilled >= selectedRide.seatsTotal
-                      ? "text-gray-500"
+                      ? "text-gray-500 dark:text-gray-400"
                       : "text-white"
                   }`}
                 >
@@ -633,16 +722,16 @@ export default function home() {
               onPress={() => setSelectedRideId(null)}
               className="mt-4"
             >
-              <Text className="text-sm text-gray-400">Back</Text>
+              <Text className="text-sm text-gray-400 dark:text-gray-500">Back</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View className="px-5 flex-1">
-            <Text className="text-lg font-semibold text-gray-900 mb-2">
+            <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
               Nearby drivers
             </Text>
             {driverMarkers.length === 0 ? (
-              <Text className="text-gray-500 mt-2">
+              <Text className="text-gray-500 dark:text-gray-400 mt-2">
                 No drivers have posted rides yet.
               </Text>
             ) : (
@@ -651,25 +740,25 @@ export default function home() {
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    className="flex-row items-center py-3 border-b border-gray-100"
+                    className="flex-row items-center py-3 border-b border-gray-100 dark:border-gray-800"
                     onPress={() => goToRide(item)}
                   >
-                    <View className="w-8 h-8 rounded-full bg-[#FDEDEC] items-center justify-center mr-3">
+                    <View className="w-8 h-8 rounded-full bg-[#FDEDEC] dark:bg-[#3a2422] items-center justify-center mr-3">
                       <MapPin size={16} color="#C0392B" />
                     </View>
                     <View className="flex-1">
-                      <Text className="text-base font-medium text-gray-900">
+                      <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
                         {item.driverName} → {item.destination}
                       </Text>
                       <View className="flex-row justify-between mt-1">
-                        <Text className="text-sm text-gray-500">{item.date}</Text>
-                        <Text className="text-sm text-gray-700">{item.fare}</Text>
+                        <Text className="text-sm text-gray-500 dark:text-gray-400">{item.date}</Text>
+                        <Text className="text-sm text-gray-700 dark:text-gray-300">{item.fare}</Text>
                       </View>
                     </View>
                   </TouchableOpacity>
                 )}
                 ListEmptyComponent={
-                  <Text className="text-gray-500 mt-2">
+                  <Text className="text-gray-500 dark:text-gray-400 mt-2">
                     No drivers heading to "{query.trim()}"
                   </Text>
                 }
@@ -678,17 +767,17 @@ export default function home() {
 
             {query.trim().length === 0 && recentSearches.length > 0 && (
               <>
-                <Text className="text-lg font-semibold text-gray-900 mt-6 mb-2">
+                <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-2">
                   Recent Searches
                 </Text>
                 {recentSearches.map((s) => (
                   <TouchableOpacity
                     key={s}
-                    className="flex-row items-center py-3 border-b border-gray-100"
+                    className="flex-row items-center py-3 border-b border-gray-100 dark:border-gray-800"
                     onPress={() => handleTapRecentSearch(s)}
                   >
                     <MapPin size={16} color="#C0392B" style={{ marginRight: 10 }} />
-                    <Text className="text-base text-gray-900">{s}</Text>
+                    <Text className="text-base text-gray-900 dark:text-gray-100">{s}</Text>
                   </TouchableOpacity>
                 ))}
               </>
